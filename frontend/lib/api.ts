@@ -81,12 +81,20 @@ export async function getProject(projectId: string) {
   return res.json();
 }
 
-export async function updateProject(projectId: string, name: string) {
+export async function updateProject(
+  projectId: string,
+  updates: {
+    name?: string;
+    description?: string;
+    requirements?: string;
+    benefits?: string;
+  }
+) {
   const headers = await getHeaders();
   const res = await fetch(`${API_URL}/projects/${projectId}`, {
     method: "PATCH",
     headers,
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(updates),
   });
   if (!res.ok) throw new Error("Failed to update project");
   return res.json();

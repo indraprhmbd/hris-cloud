@@ -18,12 +18,19 @@ class ProjectCreate(BaseModel):
 
 class ProjectUpdate(BaseModel):
     name: str
+    description: Optional[str] = None
+    requirements: Optional[str] = None
+    benefits: Optional[str] = None
 
 class Project(BaseModel):
     id: UUID
     org_id: UUID
     name: str
     template_id: str
+    description: Optional[str]
+    requirements: Optional[str]
+    benefits: Optional[str]
+    org_name: Optional[str] = None
     created_at: datetime
 
 class APIKey(BaseModel):

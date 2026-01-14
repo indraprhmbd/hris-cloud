@@ -120,16 +120,68 @@ export default function CareerPage() {
         <h1 className="text-4xl md:text-5xl font-extrabold mb-4">
           {project.name}
         </h1>
-        <p className="text-xl opacity-80">Join the team at {project.org_id}</p>
+        <p className="text-xl opacity-80">
+          Join the team at {project.org_name || "us"}
+        </p>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div
           className={`p-8 shadow-2xl border ${activeTheme.card} transition-all`}
         >
-          <h2 className="text-2xl font-bold mb-6">
-            Apply for Generic Engineer
-          </h2>
+          <h2 className="text-2xl font-bold mb-6">Apply for {project.name}</h2>
+
+          {/* Dynamic Content Section */}
+          {(project.description ||
+            project.requirements ||
+            project.benefits) && (
+            <div
+              className={`mb-8 p-6 rounded-xl ${
+                activeTheme.bg === "bg-slate-900"
+                  ? "bg-slate-700/50"
+                  : "bg-gray-50"
+              }`}
+            >
+              {project.description && (
+                <div className="mb-4">
+                  <h3 className={`font-bold text-lg mb-2 ${activeTheme.text}`}>
+                    About the Role
+                  </h3>
+                  <p
+                    className={`whitespace-pre-wrap opacity-90 ${activeTheme.text}`}
+                  >
+                    {project.description}
+                  </p>
+                </div>
+              )}
+
+              {project.requirements && (
+                <div className="mb-4">
+                  <h3 className={`font-bold text-lg mb-2 ${activeTheme.text}`}>
+                    Requirements
+                  </h3>
+                  <p
+                    className={`whitespace-pre-wrap opacity-90 ${activeTheme.text}`}
+                  >
+                    {project.requirements}
+                  </p>
+                </div>
+              )}
+
+              {project.benefits && (
+                <div>
+                  <h3 className={`font-bold text-lg mb-2 ${activeTheme.text}`}>
+                    Benefits
+                  </h3>
+                  <p
+                    className={`whitespace-pre-wrap opacity-90 ${activeTheme.text}`}
+                  >
+                    {project.benefits}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>

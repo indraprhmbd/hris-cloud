@@ -99,7 +99,15 @@ def get_project(project_id: str):
     res = supabase.table("projects").select("*").eq("id", project_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Project not found")
-    return res.data[0]
+    
+    project = res.data[0]
+    
+    # Fetch Org Name
+    org_res = supabase.table("organizations").select("name").eq("id", project['org_id']).execute()
+    if org_res.data:
+        project['org_name'] = org_res.data[0]['name']
+        
+    return project
 
 @app.patch("/projects/{project_id}", response_model=Project)
 def update_project(project_id: str, update: ProjectUpdate, user_id: str = Depends(get_current_user)):
@@ -108,7 +116,15 @@ def update_project(project_id: str, update: ProjectUpdate, user_id: str = Depend
     if not proj_check.data:
          raise HTTPException(status_code=403, detail="Not authorized")
     
-    res = supabase.table("projects").update({"name": update.name}).eq("id", project_id).execute()
+    project_data = {"name": update.name}
+    if update.description is not None:
+        project_data["description"] = update.description
+    if update.requirements is not None:
+        project_data["requirements"] = update.requirements
+    if update.benefits is not None:
+        project_data["benefits"] = update.benefits
+        
+    res = supabase.table("projects").update(project_data).eq("id", project_id).execute()
     return res.data[0]
 
 @app.post("/projects/{project_id}/keys", response_model=APIKey)

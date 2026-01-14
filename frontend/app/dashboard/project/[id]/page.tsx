@@ -19,6 +19,12 @@ export default function ProjectDashboard() {
   const [editedName, setEditedName] = useState("");
   const [activeTab, setActiveTab] = useState<"priority" | "other">("priority");
 
+  // Content Editor State
+  const [isContentModalOpen, setIsContentModalOpen] = useState(false);
+  const [description, setDescription] = useState("");
+  const [requirements, setRequirements] = useState("");
+  const [benefits, setBenefits] = useState("");
+
   // Filter applicants
   const priorityApplicants = applicants.filter((a) => (a.ai_score || 0) >= 70);
   const otherApplicants = applicants.filter((a) => (a.ai_score || 0) < 70);
@@ -35,14 +41,29 @@ export default function ProjectDashboard() {
     const p = await getProject(id as string);
     setProject(p);
     setEditedName(p.name);
+    setDescription(p.description || "");
+    setRequirements(p.requirements || "");
+    setBenefits(p.benefits || "");
     const a = await getApplicants(id as string);
     setApplicants(a);
   }
 
   async function handleUpdateName() {
     if (!project || !editedName) return;
-    await updateProject(project.id, editedName);
+    await updateProject(project.id, { name: editedName });
     setIsEditing(false);
+    loadData();
+  }
+
+  async function handleUpdateContent() {
+    if (!project) return;
+    await updateProject(project.id, {
+      name: project.name, // Keep existing name
+      description,
+      requirements,
+      benefits,
+    });
+    setIsContentModalOpen(false);
     loadData();
   }
 
@@ -105,6 +126,15 @@ export default function ProjectDashboard() {
             >
               Exit
             </a>
+          </div>
+
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setIsContentModalOpen(true)}
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded text-sm font-medium transition-colors"
+            >
+              📝 Edit Page Content
+            </button>
           </div>
 
           {/* Blind Mode Toggle */}
@@ -298,6 +328,67 @@ export default function ProjectDashboard() {
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-400">
             Select a candidate to review details
+          </div>
+        )}
+
+        {/* Content Editor Modal */}
+        {isContentModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b sticky top-0 bg-white z-10 flex justify-between items-center">
+                <h3 className="font-bold text-lg">Edit Career Page Content</h3>
+                <button onClick={() => setIsContentModalOpen(false)}>✕</button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-bold mb-1">
+                    Job Description
+                  </label>
+                  <textarea
+                    className="w-full p-3 border rounded-lg h-32 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="Describe the role..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1">
+                    Requirements
+                  </label>
+                  <textarea
+                    className="w-full p-3 border rounded-lg h-32 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="- Must use Clean Architecture..."
+                    value={requirements}
+                    onChange={(e) => setRequirements(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1">
+                    Benefits
+                  </label>
+                  <textarea
+                    className="w-full p-3 border rounded-lg h-32 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="- Free Coffee..."
+                    value={benefits}
+                    onChange={(e) => setBenefits(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="p-6 border-t bg-gray-50 flex justify-end gap-2 sticky bottom-0">
+                <button
+                  onClick={() => setIsContentModalOpen(false)}
+                  className="px-4 py-2 text-gray-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateContent}
+                  className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
