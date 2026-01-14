@@ -14,7 +14,9 @@ export default function CareerPage() {
 
   useEffect(() => {
     if (id) {
-      fetch(`http://localhost:8000/projects/${id}`)
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      fetch(`${API_URL}/projects/${id}`)
         .then((res) => res.json())
         .then((data) => setProject(data))
         .catch((err) => console.error("Failed to load project", err));
@@ -35,7 +37,9 @@ export default function CareerPage() {
     formData.append("cv", cvFile);
 
     try {
-      const res = await fetch("http://localhost:8000/apply", {
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const res = await fetch(`${API_URL}/apply`, {
         method: "POST",
         headers: {
           "x-project-id": id as string,
