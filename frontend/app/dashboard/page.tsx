@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   createOrganization,
@@ -10,7 +10,7 @@ import {
   generateApiKey,
 } from "@/lib/api";
 
-export default function Dashboard() {
+function DashboardContent() {
   const searchParams = useSearchParams();
   const orgIdFromUrl = searchParams.get("orgId");
   const [orgs, setOrgs] = useState<any[]>([]);
@@ -359,5 +359,13 @@ export default function Dashboard() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<div>Loading Dashboard...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
