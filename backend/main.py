@@ -67,8 +67,7 @@ def list_organizations(user_id: str = Depends(get_current_user)):
 
 @app.post("/projects", response_model=Project)
 def create_project(project: ProjectCreate, user_id: str = Depends(get_current_user)):
-    if project.template_id != "recruitment-ai-v1":
-         raise HTTPException(status_code=400, detail="Invalid template ID")
+
          
     # Check Org Owner
     org_check = supabase.table("organizations").select("id").eq("id", project.org_id).eq("owner_id", user_id).execute()
