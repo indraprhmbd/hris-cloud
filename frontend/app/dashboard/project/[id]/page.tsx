@@ -121,7 +121,7 @@ export default function ProjectDashboard() {
             )}
 
             <a
-              href="/dashboard"
+              href={`/dashboard?orgId=${project?.org_id}`}
               className="text-xs text-gray-500 hover:text-gray-800"
             >
               Exit

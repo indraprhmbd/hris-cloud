@@ -1,6 +1,5 @@
-"use client";
-
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   createOrganization,
   getOrganizations,
@@ -10,6 +9,8 @@ import {
 } from "@/lib/api";
 
 export default function Dashboard() {
+  const searchParams = useSearchParams();
+  const orgIdFromUrl = searchParams.get("orgId");
   const [orgs, setOrgs] = useState<any[]>([]);
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
   const [projects, setProjects] = useState<any[]>([]);
@@ -60,7 +61,14 @@ export default function Dashboard() {
     try {
       const data = await getOrganizations();
       setOrgs(data);
-      if (data.length > 0 && !selectedOrg) setSelectedOrg(data[0].id);
+      if (data.length > 0) {
+        // If URL has orgId, use it. Else default to first one.
+        if (orgIdFromUrl) {
+          setSelectedOrg(orgIdFromUrl);
+        } else if (!selectedOrg) {
+          setSelectedOrg(data[0].id);
+        }
+      }
     } catch (e) {
       console.error(e);
     }
