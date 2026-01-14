@@ -21,7 +21,8 @@ export default function Dashboard() {
   const [apiKey, setApiKey] = useState<string | null>(null);
 
   // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // Project Modal
+  const [isOrgModalOpen, setIsOrgModalOpen] = useState(false); // Org Modal
   const [selectedTemplate, setSelectedTemplate] = useState("template-modern");
 
   const templates = [
@@ -78,6 +79,7 @@ export default function Dashboard() {
     if (!newOrgName) return;
     await createOrganization(newOrgName);
     setNewOrgName("");
+    setIsOrgModalOpen(false);
     loadOrgs();
   }
 
@@ -109,11 +111,12 @@ export default function Dashboard() {
             </h1>
             <p className="text-gray-500 text-sm">Manage your AI HR Systems</p>
           </div>
+
           <div className="flex items-center gap-4">
             <select
               value={selectedOrg || ""}
               onChange={(e) => setSelectedOrg(e.target.value)}
-              className="p-2 border rounded-md text-sm bg-gray-50"
+              className="p-2 border rounded-md text-sm bg-gray-50 max-w-[200px]"
             >
               {orgs.map((org) => (
                 <option key={org.id} value={org.id}>
@@ -121,31 +124,15 @@ export default function Dashboard() {
                 </option>
               ))}
             </select>
-          </div>
-        </header>
-
-        {/* Create Org Section */}
-        {orgs.length === 0 && (
-          <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 flex gap-4 items-end">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-blue-900 mb-1">
-                Create Organization
-              </label>
-              <input
-                className="w-full p-2 rounded border border-blue-200"
-                placeholder="e.g. Acme Corp"
-                value={newOrgName}
-                onChange={(e) => setNewOrgName(e.target.value)}
-              />
-            </div>
             <button
-              onClick={handleCreateOrg}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              onClick={() => setIsOrgModalOpen(true)}
+              className="bg-gray-900 text-white w-8 h-8 rounded flex items-center justify-center text-lg hover:bg-gray-700"
+              title="Create New Organization"
             >
-              Create
+              +
             </button>
           </div>
-        )}
+        </header>
 
         {/* Projects List */}
         {selectedOrg && (
@@ -240,6 +227,36 @@ export default function Dashboard() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Create Org Modal */}
+        {isOrgModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+              <h3 className="text-xl font-bold mb-4">Create Organization</h3>
+              <input
+                className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="e.g. Acme Corp"
+                value={newOrgName}
+                onChange={(e) => setNewOrgName(e.target.value)}
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setIsOrgModalOpen(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateOrg}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Create
+                </button>
+              </div>
             </div>
           </div>
         )}
