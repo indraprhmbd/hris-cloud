@@ -96,7 +96,6 @@ export default function CareerPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-green-50">
         <div className="text-center p-8 bg-white rounded-2xl shadow-xl max-w-lg">
-          <div className="text-6xl mb-4">🎉</div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Application Received!
           </h2>
