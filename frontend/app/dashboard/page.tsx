@@ -20,6 +20,31 @@ export default function Dashboard() {
   const [newProjectName, setNewProjectName] = useState("");
   const [apiKey, setApiKey] = useState<string | null>(null);
 
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState("template-modern");
+
+  const templates = [
+    {
+      id: "template-modern",
+      name: "Modern Tech",
+      desc: "Dark mode, gradients, tech-forward.",
+      color: "bg-slate-900 text-white",
+    },
+    {
+      id: "template-classic",
+      name: "Classic Corporate",
+      desc: "Clean white, professional, serif fonts.",
+      color: "bg-white border-2 border-gray-100",
+    },
+    {
+      id: "template-creative",
+      name: "Creative Startup",
+      desc: "Vibrant colors, rounded shapes, friendly.",
+      color: "bg-yellow-50 border-2 border-yellow-200",
+    },
+  ];
+
   useEffect(() => {
     loadOrgs();
   }, []);
@@ -59,8 +84,9 @@ export default function Dashboard() {
   async function handleCreateProject() {
     if (!newProjectName || !selectedOrg) return;
     try {
-      await createProject(selectedOrg, newProjectName, "recruitment-ai-v1");
+      await createProject(selectedOrg, newProjectName, selectedTemplate);
       setNewProjectName("");
+      setIsModalOpen(false);
       loadProjects(selectedOrg);
     } catch (e: any) {
       alert("Failed: " + e.message);
@@ -127,21 +153,13 @@ export default function Dashboard() {
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800">Projects</h2>
 
-              {/* New Project Input (Mini form for MVP) */}
-              <div className="flex gap-2">
-                <input
-                  className="p-2 border rounded text-sm w-64"
-                  placeholder="New Project Name..."
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                />
-                <button
-                  onClick={handleCreateProject}
-                  className="bg-indigo-600 text-white px-3 py-2 rounded text-sm hover:bg-indigo-700"
-                >
-                  + New Project
-                </button>
-              </div>
+              {/* New Project Button */}
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 font-medium flex items-center gap-2"
+              >
+                <span>+</span> New Project
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -222,6 +240,93 @@ export default function Dashboard() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Create Project Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Create New Project
+                </h3>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Project Name / Job Title
+                  </label>
+                  <input
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                    placeholder="e.g. Senior Frontend Engineer"
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Choose Template
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {templates.map((t) => (
+                      <div
+                        key={t.id}
+                        onClick={() => setSelectedTemplate(t.id)}
+                        className={`cursor-pointer p-4 rounded-xl border-2 transition-all duration-200 relative ${
+                          selectedTemplate === t.id
+                            ? "border-indigo-600 ring-4 ring-indigo-50"
+                            : "border-transparent hover:bg-gray-50"
+                        }`}
+                      >
+                        <div
+                          className={`h-24 w-full rounded-lg mb-3 ${t.color} flex items-center justify-center shadow-inner`}
+                        >
+                          <span className="text-xs font-bold opacity-50">
+                            Preview
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-sm text-gray-900">
+                          {t.name}
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                          {t.desc}
+                        </p>
+
+                        {selectedTemplate === t.id && (
+                          <div className="absolute top-2 right-2 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs">
+                            ✓
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 bg-gray-50 flex justify-end gap-3">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateProject}
+                  className="px-6 py-2 bg-black text-white font-bold rounded-lg hover:bg-gray-800 shadow-lg"
+                >
+                  Create Project
+                </button>
+              </div>
             </div>
           </div>
         )}
