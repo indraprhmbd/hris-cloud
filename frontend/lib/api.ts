@@ -81,6 +81,17 @@ export async function getProject(projectId: string) {
   return res.json();
 }
 
+export async function updateProject(projectId: string, name: string) {
+  const headers = await getHeaders();
+  const res = await fetch(`${API_URL}/projects/${projectId}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error("Failed to update project");
+  return res.json();
+}
+
 export async function getApplicants(projectId: string) {
   const headers = await getHeaders();
   delete headers["Content-Type"];

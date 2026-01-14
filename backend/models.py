@@ -16,6 +16,9 @@ class ProjectCreate(BaseModel):
     name: str
     template_id: str
 
+class ProjectUpdate(BaseModel):
+    name: str
+
 class Project(BaseModel):
     id: UUID
     org_id: UUID

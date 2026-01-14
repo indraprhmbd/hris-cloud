@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getProject, getApplicants, updateApplicantStatus } from "@/lib/api";
+import {
+  getProject,
+  getApplicants,
+  updateApplicantStatus,
+  updateProject,
+} from "@/lib/api";
 
 export default function ProjectDashboard() {
   const { id } = useParams();
@@ -10,6 +15,15 @@ export default function ProjectDashboard() {
   const [applicants, setApplicants] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [blindMode, setBlindMode] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState("");
+  const [activeTab, setActiveTab] = useState<"priority" | "other">("priority");
+
+  // Filter applicants
+  const priorityApplicants = applicants.filter((a) => (a.ai_score || 0) >= 70);
+  const otherApplicants = applicants.filter((a) => (a.ai_score || 0) < 70);
+  const displayedApplicants =
+    activeTab === "priority" ? priorityApplicants : otherApplicants;
 
   useEffect(() => {
     if (id) {
@@ -20,8 +34,16 @@ export default function ProjectDashboard() {
   async function loadData() {
     const p = await getProject(id as string);
     setProject(p);
+    setEditedName(p.name);
     const a = await getApplicants(id as string);
     setApplicants(a);
+  }
+
+  async function handleUpdateName() {
+    if (!project || !editedName) return;
+    await updateProject(project.id, editedName);
+    setIsEditing(false);
+    loadData();
   }
 
   async function handleStatus(applicantId: string, status: string) {
@@ -40,7 +62,43 @@ export default function ProjectDashboard() {
       <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-100">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="font-bold text-lg truncate">{project?.name}</h2>
+            {isEditing ? (
+              <div className="flex gap-2 w-full">
+                <input
+                  className="flex-1 border rounded px-1 text-sm bg-white"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                />
+                <button
+                  onClick={handleUpdateName}
+                  className="text-xs bg-green-100 text-green-800 px-2 rounded"
+                >
+                  ✓
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="text-xs text-gray-400 px-1"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 group max-w-[80%]">
+                <h2
+                  className="font-bold text-lg truncate"
+                  title={project?.name}
+                >
+                  {project?.name}
+                </h2>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600"
+                >
+                  ✏️
+                </button>
+              </div>
+            )}
+
             <a
               href="/dashboard"
               className="text-xs text-gray-500 hover:text-gray-800"
@@ -69,8 +127,31 @@ export default function ProjectDashboard() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {applicants.map((app) => (
+        <div className="px-4 pb-2 flex gap-4 text-sm border-b border-gray-100">
+          <button
+            onClick={() => setActiveTab("priority")}
+            className={`pb-2 border-b-2 font-medium transition-colors ${
+              activeTab === "priority"
+                ? "border-indigo-600 text-indigo-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Priority Inbox ({priorityApplicants.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("other")}
+            className={`pb-2 border-b-2 font-medium transition-colors ${
+              activeTab === "other"
+                ? "border-gray-500 text-gray-800"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Others ({otherApplicants.length})
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto bg-gray-50/50">
+          {displayedApplicants.map((app) => (
             <div
               key={app.id}
               onClick={() => setSelectedId(app.id)}
@@ -121,9 +202,11 @@ export default function ProjectDashboard() {
               </div>
             </div>
           ))}
-          {applicants.length === 0 && (
+          {displayedApplicants.length === 0 && (
             <div className="p-8 text-center text-gray-400 text-sm">
-              No applicants yet. Share the career page wrapper!
+              {activeTab === "priority"
+                ? "No high-scoring candidates yet."
+                : "No other candidates."}
             </div>
           )}
         </div>

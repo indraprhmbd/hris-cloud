@@ -15,6 +15,7 @@ from models import ApplicantCreate, Applicant, ApplicantUpdate
 import io
 from pydantic import ValidationError
 from pypdf import PdfReader
+from email_service import send_decision_email
 
 load_dotenv()
 
@@ -99,6 +100,16 @@ def get_project(project_id: str):
     res = supabase.table("projects").select("*").eq("id", project_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Project not found")
+    return res.data[0]
+
+@app.patch("/projects/{project_id}", response_model=Project)
+def update_project(project_id: str, update: ProjectUpdate, user_id: str = Depends(get_current_user)):
+    # Verify ownership
+    proj_check = supabase.table("projects").select("id").eq("id", project_id).eq("owner_id", user_id).execute()
+    if not proj_check.data:
+         raise HTTPException(status_code=403, detail="Not authorized")
+    
+    res = supabase.table("projects").update({"name": update.name}).eq("id", project_id).execute()
     return res.data[0]
 
 @app.post("/projects/{project_id}/keys", response_model=APIKey)
@@ -199,14 +210,22 @@ class ApplicantUpdate(BaseModel):
 @app.patch("/applicants/{applicant_id}", response_model=Applicant)
 def update_applicant(applicant_id: str, update: ApplicantUpdate, user_id: str = Depends(get_current_user)):
     
-    app_data = supabase.table("applicants").select("project_id").eq("id", applicant_id).execute()
+    app_data = supabase.table("applicants").select("project_id, name, email").eq("id", applicant_id).execute()
     if not app_data.data:
         raise HTTPException(status_code=404, detail="Applicant not found")
         
-    project_id = app_data.data[0]['project_id']
-    proj_check = supabase.table("projects").select("id").eq("id", project_id).eq("owner_id", user_id).execute()
+    applicant = app_data.data[0]
+    project_id = applicant['project_id']
+    
+    # Verify ownership and get project name
+    proj_check = supabase.table("projects").select("id, name").eq("id", project_id).eq("owner_id", user_id).execute()
     if not proj_check.data:
          raise HTTPException(status_code=403, detail="Not authorized")
+    
+    project_name = proj_check.data[0]['name']
+
+    # Send Email Notification
+    send_decision_email(applicant['email'], applicant['name'], update.status, project_name)
 
     res = supabase.table("applicants").update({"status": update.status}).eq("id", applicant_id).execute()
     return res.data[0]
