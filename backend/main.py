@@ -9,7 +9,7 @@ import secrets
 import jwt # PyJWT
 from dotenv import load_dotenv
 from database import supabase
-from models import Organization, OrganizationCreate, Project, ProjectCreate, APIKey
+from models import Organization, OrganizationCreate, Project, ProjectCreate, APIKey, ProjectUpdate
 from agent import score_candidate
 from models import ApplicantCreate, Applicant, ApplicantUpdate
 import io
