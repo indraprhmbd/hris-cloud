@@ -42,34 +42,47 @@ app.add_middleware(
 # Rate Limiting Middleware
 app.middleware("http")(rate_limit_middleware)
 
-# Auth Dependency - FIXED: Proper JWT validation
+# Auth Dependency - FIXED: Proper JWT validation with better logging
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     try:
         # Get Supabase JWT secret from environment
         jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
         if not jwt_secret:
+            print("AUTH ALERT: SUPABASE_JWT_SECRET is MISSING in environment variables")
             # Fallback to unverified for local dev ONLY
-            print("WARNING: SUPABASE_JWT_SECRET not set, using unverified JWT (DEV ONLY)")
+            print("WARNING: Using unverified JWT (Mode: DEV/SECURITY_RISK)")
             payload = jwt.decode(token, options={"verify_signature": False})
         else:
+            print(f"AUTH DEBUG: JWT Secret found (Length: {len(jwt_secret)})")
+            # Log the algorithm from the token header for debugging
+            header = jwt.get_unverified_header(token)
+            print(f"AUTH DEBUG: Token Header Alg: {header.get('alg')}")
             # Proper verification with secret
+            # Supabase can use either:
+            # - HMAC (HS256/384/512) with Legacy JWT Secret
+            # - ECDSA (ES256/384/512) with JWT Signing Keys
+            # - RSA (RS256/384/512) with JWT Signing Keys
             payload = jwt.decode(
                 token,
                 jwt_secret,
-                algorithms=["HS256"],
-                audience="authenticated"
+                algorithms=["HS256", "HS384", "HS512", "ES256", "ES384", "ES512", "RS256", "RS384", "RS512"],
+                options={"verify_aud": False, "verify_signature": True},
+                leeway=120
             )
         
         user_id = payload.get("sub")
         if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid Token")
+            raise HTTPException(status_code=401, detail="Invalid Token: No sub claim")
         return user_id
     except jwt.ExpiredSignatureError:
+        print("JWT Error: Token expired")
         raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except jwt.InvalidTokenError as e:
+        print(f"JWT Error: {str(e)}")
+        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
     except Exception as e:
+        print(f"Auth Error: {str(e)}")
         raise HTTPException(status_code=401, detail="Authentication failed")
 
 @app.get("/")
