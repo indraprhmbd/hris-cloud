@@ -9,6 +9,7 @@ import {
   getProjects,
   generateApiKey,
   updateProject,
+  getApplicants,
 } from "@/lib/api";
 import CandidateTable from "./components/CandidateTable";
 import ProjectTable from "./components/ProjectTable";
@@ -62,7 +63,24 @@ function DashboardContent() {
   async function loadProjects(orgId: string) {
     try {
       const data = await getProjects(orgId);
-      setProjects(data);
+
+      // Fetch applicants for each project
+      const projectsWithApplicants = await Promise.all(
+        data.map(async (project: any) => {
+          try {
+            const applicants = await getApplicants(project.id);
+            return { ...project, applicants };
+          } catch (e) {
+            console.error(
+              `Failed to load applicants for project ${project.id}`,
+              e
+            );
+            return { ...project, applicants: [] };
+          }
+        })
+      );
+
+      setProjects(projectsWithApplicants);
     } catch (e) {
       console.error(e);
     }

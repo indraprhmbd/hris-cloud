@@ -17,7 +17,7 @@ class ProjectCreate(BaseModel):
     template_id: str
 
 class ProjectUpdate(BaseModel):
-    name: str
+    name: Optional[str] = None
     description: Optional[str] = None
     requirements: Optional[str] = None
     benefits: Optional[str] = None
