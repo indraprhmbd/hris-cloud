@@ -1,12 +1,13 @@
-from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, constr
 from typing import List, Optional
 import os
 import uuid
 import secrets
 import jwt # PyJWT
+import re
 from dotenv import load_dotenv
 from database import supabase
 from models import Organization, OrganizationCreate, Project, ProjectCreate, APIKey, ProjectUpdate
@@ -16,32 +17,60 @@ import io
 from pydantic import ValidationError
 from pypdf import PdfReader
 from email_service import send_decision_email
+from rate_limiter import rate_limit_middleware
 
 load_dotenv()
 
 app = FastAPI(title="HRIS Cloud API")
 security = HTTPBearer()
 
+# CORS Configuration - Whitelist specific origins
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    os.getenv("FRONTEND_URL", "https://hris-cloud.vercel.app"),
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Explicitly allow all for MVP
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
 
-# Auth Dependency
+# Rate Limiting Middleware
+app.middleware("http")(rate_limit_middleware)
+
+# Auth Dependency - FIXED: Proper JWT validation
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     try:
-        # Strategy: Decode unverified to get 'sub' (User ID) for MVP
-        payload = jwt.decode(token, options={"verify_signature": False})
+        # Get Supabase JWT secret from environment
+        jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
+        if not jwt_secret:
+            # Fallback to unverified for local dev ONLY
+            print("WARNING: SUPABASE_JWT_SECRET not set, using unverified JWT (DEV ONLY)")
+            payload = jwt.decode(token, options={"verify_signature": False})
+        else:
+            # Proper verification with secret
+            payload = jwt.decode(
+                token,
+                jwt_secret,
+                algorithms=["HS256"],
+                audience="authenticated"
+            )
+        
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid Token")
         return user_id
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
     except Exception as e:
-        raise HTTPException(status_code=401, detail="Invalid Auth")
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
 @app.get("/")
 def read_root():
@@ -159,6 +188,11 @@ def list_templates():
 
 # --- Recruitment Layer ---
 
+# Input validation model
+class ApplicantInput(BaseModel):
+    name: constr(min_length=2, max_length=100, strip_whitespace=True)
+    email: EmailStr
+
 @app.post("/apply", response_model=Applicant)
 async def apply_candidate(
     name: str = Form(...),
@@ -167,6 +201,16 @@ async def apply_candidate(
     x_api_key: str = Header(None),
     x_project_id: str = Header(None)
 ):
+    # Input validation and sanitization
+    try:
+        validated_input = ApplicantInput(name=name, email=email)
+        name = validated_input.name
+        email = validated_input.email
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "Invalid input", "message": str(e)}
+        )
     # 1. Validate Keys
     if not x_project_id:
         raise HTTPException(status_code=400, detail="Missing Project ID")

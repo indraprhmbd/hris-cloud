@@ -1,6 +1,7 @@
 FROM python:3.9
 
 # Buat user baru agar aman (Hugging Face menyarankan ini, tapi root juga bisa)
+RUN apt-get update && apt-get install -y libmagic1 && rm -rf /var/lib/apt/lists/*
 RUN useradd -m -u 1000 user
 USER user
 ENV PATH="/home/user/.local/bin:${PATH}"

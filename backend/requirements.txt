@@ -12,3 +12,4 @@ pyjwt
 resend
 python-magic
 python-docx
+email-validator
