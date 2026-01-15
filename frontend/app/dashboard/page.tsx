@@ -17,8 +17,6 @@ function DashboardContent() {
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
   const [projects, setProjects] = useState<any[]>([]);
 
-  // Auth state is handled by Middleware/Supabase helper in api.ts
-  // If API calls fail due to 401, we might want to catch that, but Middleware protects route.
   const [newOrgName, setNewOrgName] = useState("");
   const [newProjectName, setNewProjectName] = useState("");
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -26,28 +24,9 @@ function DashboardContent() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false); // Project Modal
   const [isOrgModalOpen, setIsOrgModalOpen] = useState(false); // Org Modal
-  const [selectedTemplate, setSelectedTemplate] = useState("template-modern");
 
-  const templates = [
-    {
-      id: "template-modern",
-      name: "Modern Tech",
-      desc: "Dark mode, gradients, tech-forward.",
-      color: "bg-slate-900 text-white",
-    },
-    {
-      id: "template-classic",
-      name: "Classic Corporate",
-      desc: "Clean white, professional, serif fonts.",
-      color: "bg-white border-2 border-gray-100",
-    },
-    {
-      id: "template-creative",
-      name: "Creative Startup",
-      desc: "Vibrant colors, rounded shapes, friendly.",
-      color: "bg-yellow-50 border-2 border-yellow-200",
-    },
-  ];
+  // Standardized Template (Enterprise Default)
+  const defaultTemplate = "template-enterprise";
 
   useEffect(() => {
     loadOrgs();
@@ -64,7 +43,6 @@ function DashboardContent() {
       const data = await getOrganizations();
       setOrgs(data);
       if (data.length > 0) {
-        // If URL has orgId, use it. Else default to first one.
         if (orgIdFromUrl) {
           setSelectedOrg(orgIdFromUrl);
         } else if (!selectedOrg) {
@@ -96,7 +74,8 @@ function DashboardContent() {
   async function handleCreateProject() {
     if (!newProjectName || !selectedOrg) return;
     try {
-      await createProject(selectedOrg, newProjectName, selectedTemplate);
+      // Always use the standard template ID, logically mapped to our single new design
+      await createProject(selectedOrg, newProjectName, "template-modern");
       setNewProjectName("");
       setIsModalOpen(false);
       loadProjects(selectedOrg);
@@ -111,131 +90,175 @@ function DashboardContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 font-sans">
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header */}
-        <header className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Platform Dashboard
-            </h1>
-            <p className="text-gray-500 text-sm">Manage your AI HR Systems</p>
-          </div>
-
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-gray-200">
+      {/* Navbar / Top Control */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <select
-              value={selectedOrg || ""}
-              onChange={(e) => setSelectedOrg(e.target.value)}
-              className="p-2 border rounded-md text-sm bg-gray-50 max-w-[200px]"
-            >
-              {orgs.map((org) => (
-                <option key={org.id} value={org.id}>
-                  {org.name}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => setIsOrgModalOpen(true)}
-              className="bg-gray-900 text-white w-8 h-8 rounded flex items-center justify-center text-lg hover:bg-gray-700"
-              title="Create New Organization"
-            >
-              +
-            </button>
+            <div className="flex items-center gap-2 font-semibold tracking-tight">
+              <div className="w-4 h-4 bg-black rounded-sm" />
+              <span className="hidden sm:inline">HRIS Cloud</span>
+            </div>
+            <div className="h-4 w-px bg-gray-200 mx-2 hidden sm:block"></div>
+
+            {/* Org Selector */}
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedOrg || ""}
+                onChange={(e) => setSelectedOrg(e.target.value)}
+                className="bg-transparent text-sm font-medium text-gray-700 hover:text-black focus:outline-none cursor-pointer"
+              >
+                {orgs.map((org) => (
+                  <option key={org.id} value={org.id}>
+                    {org.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => setIsOrgModalOpen(true)}
+                className="text-gray-400 hover:text-black transition-colors"
+                title="New Organization"
+              >
+                +
+              </button>
+            </div>
           </div>
-        </header>
 
-        {/* Projects List */}
-        {selectedOrg && (
+          <div className="text-xs font-mono text-gray-400 bg-gray-50 px-2 py-1 rounded hidden md:block">
+            org_id: {selectedOrg}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+        {selectedOrg ? (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-800">Projects</h2>
-
-              {/* New Project Button */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight text-gray-900">
+                  Projects
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Manage recruitment instances and API access.
+                </p>
+              </div>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 font-medium flex items-center gap-2"
+                className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-shadow shadow-sm w-full sm:w-auto"
               >
-                <span>+</span> New Project
+                Create Project
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {projects.map((project) => (
-                <div
-                  key={project.id}
-                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="font-bold text-lg text-gray-900">
-                        {project.name}
-                      </h3>
-                      <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full mt-1">
-                        Active
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <button
-                        onClick={() => handleGenerateKey(project.id)}
-                        className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600"
+            {/* Projects Table */}
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
-                        Gen API Key
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm text-gray-500">
-                    <p>
-                      Template:{" "}
-                      <span className="font-medium text-gray-700">
-                        {project.template_id}
-                      </span>
-                    </p>
-                    <p>
-                      ID:{" "}
-                      <code className="bg-gray-100 px-1 rounded">
-                        {project.id}
-                      </code>
-                    </p>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
-                    <a
-                      href={`/dashboard/project/${project.id}`}
-                      className="flex-1 text-center bg-white border border-gray-200 text-gray-900 py-2 rounded text-sm hover:bg-gray-50 transition-colors font-semibold"
-                    >
-                      Manage System
-                    </a>
-                    <a
-                      href={`/career/${project.id}`}
-                      target="_blank"
-                      className="flex-1 text-center bg-black text-white py-2 rounded text-sm hover:bg-gray-800 transition-colors shadow-sm"
-                    >
-                      View Career Page
-                    </a>
-                  </div>
-                </div>
-              ))}
+                        Name
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell"
+                      >
+                        ID
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell"
+                      >
+                        Status
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {projects.map((project) => (
+                      <tr
+                        key={project.id}
+                        className="hover:bg-gray-50 table-row"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {project.name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                          <code className="text-xs font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                            {project.id.slice(0, 8)}...
+                          </code>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                            Active
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
+                          <button
+                            onClick={() => handleGenerateKey(project.id)}
+                            className="text-gray-500 hover:text-black transition-colors text-xs uppercase"
+                          >
+                            API Key
+                          </button>
+                          <a
+                            href={`/dashboard/project/${project.id}`}
+                            className="text-indigo-600 hover:text-indigo-900 transition-colors"
+                          >
+                            Manage
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                    {projects.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="px-6 py-12 text-center text-sm text-gray-500"
+                        >
+                          No projects found. Create one to get started.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
+          </div>
+        ) : (
+          <div className="text-center py-20 text-gray-500">
+            Please select or create an organization.
           </div>
         )}
 
-        {/* API Key Modal/Toast (Simple alert for MVP) */}
+        {/* API Key Modal */}
         {apiKey && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-            <div className="bg-white p-8 rounded-xl max-w-md w-full space-y-4">
-              <h3 className="text-lg font-bold">API Key Generated</h3>
-              <p className="text-sm text-gray-600">
-                Save this key, it wont be shown again.
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white p-6 rounded-lg max-w-lg w-full shadow-xl border border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-2">
+                API Key Generated
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                This key allows external systems to submit candidates to this
+                project. It will not be shown again.
               </p>
-              <code className="block bg-gray-100 p-4 rounded text-wrap break-all border border-gray-200 font-mono text-sm text-red-600">
+              <div className="bg-gray-100 p-3 rounded border border-gray-200 mb-6 font-mono text-sm break-all text-gray-800">
                 {apiKey}
-              </code>
+              </div>
               <button
                 onClick={() => setApiKey(null)}
-                className="w-full bg-gray-900 text-white py-2 rounded hover:bg-gray-800"
+                className="w-full bg-black text-white py-2 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
               >
-                Close
+                Done
               </button>
             </div>
           </div>
@@ -243,113 +266,83 @@ function DashboardContent() {
 
         {/* Create Org Modal */}
         {isOrgModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-              <h3 className="text-xl font-bold mb-4">Create Organization</h3>
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
+                New Organization
+              </h3>
               <input
-                className="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="e.g. Acme Corp"
+                className="w-full p-2.5 border border-gray-300 rounded-md mb-6 focus:ring-1 focus:ring-black focus:border-black outline-none transition text-sm"
+                placeholder="Organization Name"
                 value={newOrgName}
                 onChange={(e) => setNewOrgName(e.target.value)}
                 autoFocus
               />
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setIsOrgModalOpen(false)}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateOrg}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 text-sm font-medium bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
                 >
-                  Create
+                  Create Organization
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Create Project Modal */}
+        {/* Create Project Modal - Simplified */}
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden">
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="text-xl font-bold text-gray-900">
-                  Create New Project
-                </h3>
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 border border-gray-200">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-gray-900">New Project</h3>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-black"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Project Name / Job Title
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Project Name
                   </label>
                   <input
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                    placeholder="e.g. Senior Frontend Engineer"
+                    className="w-full p-2.5 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:border-black outline-none transition text-sm"
+                    placeholder="e.g. Q1 Hiring - Senior Backend"
                     value={newProjectName}
                     onChange={(e) => setNewProjectName(e.target.value)}
+                    autoFocus
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Choose Template
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {templates.map((t) => (
-                      <div
-                        key={t.id}
-                        onClick={() => setSelectedTemplate(t.id)}
-                        className={`cursor-pointer p-4 rounded-xl border-2 transition-all duration-200 relative ${
-                          selectedTemplate === t.id
-                            ? "border-indigo-600 ring-4 ring-indigo-50"
-                            : "border-transparent hover:bg-gray-50"
-                        }`}
-                      >
-                        <div
-                          className={`h-24 w-full rounded-lg mb-3 ${t.color} flex items-center justify-center shadow-inner`}
-                        >
-                          <span className="text-xs font-bold opacity-50">
-                            Preview
-                          </span>
-                        </div>
-                        <h4 className="font-bold text-sm text-gray-900">
-                          {t.name}
-                        </h4>
-                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                          {t.desc}
-                        </p>
-
-                        {selectedTemplate === t.id && (
-                          <div className="absolute top-2 right-2 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs">
-                            ✓
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                <div className="bg-gray-50 p-4 rounded-md border border-gray-200 text-sm text-gray-600">
+                  <p>
+                    This will create a new recruitment instance using the{" "}
+                    <strong>Standard Enterprise</strong> schema. You can
+                    customize job descriptions and requirements after creation.
+                  </p>
                 </div>
               </div>
 
-              <div className="p-6 bg-gray-50 flex justify-end gap-3">
+              <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateProject}
-                  className="px-6 py-2 bg-black text-white font-bold rounded-lg hover:bg-gray-800 shadow-lg"
+                  className="px-4 py-2 text-sm font-medium bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
                 >
                   Create Project
                 </button>

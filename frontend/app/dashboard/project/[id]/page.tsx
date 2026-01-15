@@ -70,328 +70,339 @@ export default function ProjectDashboard() {
   async function handleStatus(applicantId: string, status: string) {
     await updateApplicantStatus(applicantId, status);
     loadData(); // Reload to update UI
-    if (selectedId === applicantId) {
-      // Keep selected?
-    }
   }
 
   const selectedCandidate = applicants.find((a) => a.id === selectedId);
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans text-gray-900">
-      {/* Sidebar / List */}
-      <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-100">
-          <div className="flex justify-between items-center mb-2">
-            {isEditing ? (
-              <div className="flex gap-2 w-full">
-                <input
-                  className="flex-1 border rounded px-1 text-sm bg-white"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                />
-                <button
-                  onClick={handleUpdateName}
-                  className="text-xs bg-green-100 text-green-800 px-2 rounded"
-                >
-                  ✓
-                </button>
-                <button
-                  onClick={() => setIsEditing(false)}
-                  className="text-xs text-gray-400 px-1"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 group max-w-[80%]">
-                <h2
-                  className="font-bold text-lg truncate"
-                  title={project?.name}
-                >
-                  {project?.name}
-                </h2>
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600"
-                >
-                  ✏️
-                </button>
-              </div>
-            )}
-
-            <a
-              href={`/dashboard?orgId=${project?.org_id}`}
-              className="text-xs text-gray-500 hover:text-gray-800"
-            >
-              Exit
-            </a>
-          </div>
-
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={() => setIsContentModalOpen(true)}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded text-sm font-medium transition-colors"
-            >
-              📝 Edit Page Content
-            </button>
-          </div>
-
-          {/* Blind Mode Toggle */}
-          <div className="flex items-center gap-2 bg-gray-100 p-2 rounded-lg">
-            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-              Blind Mode
-            </span>
-            <button
-              onClick={() => setBlindMode(!blindMode)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                blindMode ? "bg-indigo-600" : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                  blindMode ? "translate-x-5" : "translate-x-1"
-                }`}
+    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans text-gray-900 selection:bg-gray-200">
+      {/* Top Bar */}
+      <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0 z-20">
+        <div className="flex items-center gap-4 overflow-hidden">
+          <a
+            href={`/dashboard?orgId=${project?.org_id}`}
+            className="text-gray-500 hover:text-black font-medium text-sm flex items-center gap-1"
+          >
+            ← <span className="hidden sm:inline">Back</span>
+          </a>
+          <div className="h-4 w-px bg-gray-200"></div>
+          {isEditing ? (
+            <div className="flex gap-2 items-center">
+              <input
+                className="border rounded px-2 py-1 text-sm outline-none focus:border-black"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                autoFocus
               />
-            </button>
-          </div>
-        </div>
-
-        <div className="px-4 pb-2 flex gap-4 text-sm border-b border-gray-100">
-          <button
-            onClick={() => setActiveTab("priority")}
-            className={`pb-2 border-b-2 font-medium transition-colors ${
-              activeTab === "priority"
-                ? "border-indigo-600 text-indigo-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Priority Inbox ({priorityApplicants.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("other")}
-            className={`pb-2 border-b-2 font-medium transition-colors ${
-              activeTab === "other"
-                ? "border-gray-500 text-gray-800"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Others ({otherApplicants.length})
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto bg-gray-50/50">
-          {displayedApplicants.map((app) => (
-            <div
-              key={app.id}
-              onClick={() => setSelectedId(app.id)}
-              className={`p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${
-                selectedId === app.id
-                  ? "bg-indigo-50 border-l-4 border-l-indigo-600"
-                  : ""
-              }`}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-semibold text-gray-900">
-                    {blindMode ? `Candidate #${app.id.slice(0, 4)}` : app.name}
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {blindMode ? "Email Hidden" : app.email}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span
-                    className={`inline-block px-2 py-1 rounded text-xs font-bold ${
-                      app.ai_score >= 80
-                        ? "bg-green-100 text-green-800"
-                        : app.ai_score >= 50
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    AI: {app.ai_score}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-2 flex items-center justify-between">
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full capitalize ${
-                    app.status === "approved"
-                      ? "bg-green-500 text-white"
-                      : app.status === "rejected"
-                      ? "bg-red-500 text-white"
-                      : "bg-gray-200 text-gray-600"
-                  }`}
-                >
-                  {app.status}
-                </span>
-                <span className="text-xs text-gray-400">
-                  {new Date(app.created_at).toLocaleDateString()}
-                </span>
-              </div>
+              <button
+                onClick={handleUpdateName}
+                className="text-xs bg-black text-white px-2 py-1 rounded"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="text-xs text-gray-500 hover:text-black"
+              >
+                Cancel
+              </button>
             </div>
-          ))}
-          {displayedApplicants.length === 0 && (
-            <div className="p-8 text-center text-gray-400 text-sm">
-              {activeTab === "priority"
-                ? "No high-scoring candidates yet."
-                : "No other candidates."}
+          ) : (
+            <div
+              className="flex items-center gap-2 group cursor-pointer"
+              onClick={() => setIsEditing(true)}
+            >
+              <h1 className="font-semibold text-sm sm:text-base text-gray-900 truncate max-w-[200px] sm:max-w-md">
+                {project?.name || "Loading..."}
+              </h1>
+              <span className="text-gray-400 group-hover:text-black opacity-0 group-hover:opacity-100 transition-opacity text-xs">
+                edit
+              </span>
             </div>
           )}
         </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-md">
+            <button
+              onClick={() => setBlindMode(!blindMode)}
+              className={`text-xs font-medium px-2 py-1 rounded transition-colors ${
+                blindMode
+                  ? "bg-black text-white"
+                  : "text-gray-600 hover:text-black"
+              }`}
+            >
+              Blind Mode
+            </button>
+          </div>
+          <button
+            onClick={() => setIsContentModalOpen(true)}
+            className="text-xs sm:text-sm font-medium border border-gray-200 hover:border-black px-3 py-1.5 rounded transition-colors"
+          >
+            Properties
+          </button>
+          <a
+            href={`/career/${id}`}
+            target="_blank"
+            className="text-xs sm:text-sm font-medium bg-black text-white px-3 py-1.5 rounded hover:bg-gray-800 transition-colors"
+          >
+            View Live
+          </a>
+        </div>
       </div>
 
-      {/* Main Content / Detail */}
-      <div className="flex-1 flex flex-col h-full bg-gray-50">
-        {selectedCandidate ? (
-          <div className="flex-1 overflow-y-auto p-8">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-3xl mx-auto">
-              {/* Header Detail */}
-              <div className="flex justify-between items-start mb-8">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    {blindMode
-                      ? `Candidate #${selectedCandidate.id.slice(0, 8)}`
-                      : selectedCandidate.name}
-                  </h1>
-                  <div className="flex gap-4 text-sm text-gray-500">
-                    <span>
-                      {blindMode
-                        ? "********@****.com"
-                        : selectedCandidate.email}
-                    </span>
-                    <span>•</span>
-                    <span>
-                      Applied{" "}
-                      {new Date(
-                        selectedCandidate.created_at
-                      ).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div
-                    className={`text-3xl font-black ${
-                      selectedCandidate.ai_score >= 80
-                        ? "text-green-600"
-                        : selectedCandidate.ai_score >= 50
-                        ? "text-yellow-600"
-                        : "text-red-600"
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Sidebar List */}
+        <div
+          className={`w-full sm:w-80 md:w-96 bg-white border-r border-gray-200 flex flex-col absolute sm:relative h-full z-10 transition-transform ${
+            selectedId ? "-translate-x-full sm:translate-x-0" : "translate-x-0"
+          }`}
+        >
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab("priority")}
+              className={`flex-1 py-3 text-xs font-medium border-b-2 transition-colors ${
+                activeTab === "priority"
+                  ? "border-black text-black"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Priority ({priorityApplicants.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("other")}
+              className={`flex-1 py-3 text-xs font-medium border-b-2 transition-colors ${
+                activeTab === "other"
+                  ? "border-black text-black"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              All Candidates ({otherApplicants.length})
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {displayedApplicants.map((app) => (
+              <div
+                key={app.id}
+                onClick={() => setSelectedId(app.id)}
+                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                  selectedId === app.id
+                    ? "bg-gray-50 border-l-2 border-l-black"
+                    : "border-l-2 border-l-transparent"
+                }`}
+              >
+                <div className="flex justify-between items-start mb-1">
+                  <span className="font-semibold text-sm text-gray-900 block truncate pr-2">
+                    {blindMode ? `Candidate ${app.id.slice(0, 4)}` : app.name}
+                  </span>
+                  <span
+                    className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded ${
+                      app.ai_score >= 80
+                        ? "bg-green-100 text-green-700"
+                        : app.ai_score >= 50
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "bg-gray-100 text-gray-600"
                     }`}
                   >
-                    {selectedCandidate.ai_score}
+                    SCORE: {app.ai_score}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs text-gray-500">
+                  <span>{new Date(app.created_at).toLocaleDateString()}</span>
+                  <span
+                    className={`capitalize ${
+                      app.status === "approved"
+                        ? "text-green-600 font-medium"
+                        : app.status === "rejected"
+                        ? "text-red-600"
+                        : ""
+                    }`}
+                  >
+                    {app.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+            {displayedApplicants.length === 0 && (
+              <div className="p-8 text-center text-gray-400 text-xs">
+                No candidates found
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Main Detail Area */}
+        <div
+          className={`flex-1 bg-gray-50 flex flex-col h-full w-full absolute sm:relative transition-transform ${
+            selectedId ? "translate-x-0" : "translate-x-full sm:translate-x-0"
+          }`}
+        >
+          {selectedCandidate ? (
+            <div className="flex flex-col h-full">
+              {/* Mobile Back Button */}
+              <div className="sm:hidden bg-white border-b border-gray-200 p-2">
+                <button
+                  onClick={() => setSelectedId(null)}
+                  className="text-sm font-medium text-gray-600 flex items-center gap-1"
+                >
+                  ← Back to List
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 sm:p-8">
+                <div className="max-w-4xl mx-auto space-y-6">
+                  {/* Profile Header */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm flex flex-col sm:flex-row justify-between gap-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                        {blindMode
+                          ? `Candidate ${selectedCandidate.id.slice(0, 8)}`
+                          : selectedCandidate.name}
+                      </h2>
+                      <div className="text-sm text-gray-500 font-mono">
+                        {blindMode
+                          ? "contact_hidden@blind.mode"
+                          : selectedCandidate.email}
+                      </div>
+                      <div className="mt-4 flex gap-2">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium uppercase tracking-wide border ${
+                            selectedCandidate.status === "approved"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : selectedCandidate.status === "rejected"
+                              ? "bg-red-50 text-red-700 border-red-200"
+                              : "bg-gray-50 text-gray-600 border-gray-200"
+                          }`}
+                        >
+                          Status: {selectedCandidate.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-left sm:text-right p-4 bg-gray-50 rounded-lg border border-gray-100 min-w-[140px]">
+                      <div className="text-xs text-gray-500 font-mono uppercase tracking-wider mb-1">
+                        AI Match Score
+                      </div>
+                      <div className="text-4xl font-black tracking-tighter text-gray-900">
+                        {selectedCandidate.ai_score}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">
-                    Fit Score
+
+                  {/* AI Log */}
+                  <div className="bg-black text-gray-300 rounded-lg p-5 font-mono text-xs sm:text-sm leading-relaxed overflow-x-auto border border-gray-800 shadow-sm">
+                    <div className="flex items-center gap-2 text-gray-500 mb-3 pb-3 border-b border-gray-800">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                      <span>SYSTEM_LOG::EVALUATION_OUPUT</span>
+                    </div>
+                    <p className="whitespace-pre-wrap">
+                      {selectedCandidate.ai_reasoning}
+                    </p>
+                  </div>
+
+                  {/* CV Viewer */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-8 shadow-sm">
+                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
+                      Extracted Resume Data
+                    </h3>
+                    <div className="font-mono text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
+                      {selectedCandidate.cv_text}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* AI Reasoning Box */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-6 rounded-xl mb-8">
-                <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-2 flex items-center gap-2">
-                  ✨ AI Analysis
-                </h3>
-                <p className="text-blue-800 leading-relaxed text-sm">
-                  {selectedCandidate.ai_reasoning}
-                </p>
-              </div>
-
-              {/* CV Content */}
-              <div className="mb-8">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">
-                  Resume / CV
-                </h3>
-                <div className="bg-gray-50 p-6 rounded-lg font-mono text-sm whitespace-pre-wrap text-gray-700 leading-relaxed border border-gray-100">
-                  {selectedCandidate.cv_text}
-                </div>
-              </div>
-
-              {/* Action Bar */}
-              <div className="flex gap-4 pt-6 border-t border-gray-100">
+              {/* Footer Actions */}
+              <div className="bg-white border-t border-gray-200 p-4 shrink-0 flex gap-4 justify-end">
                 <button
                   onClick={() => handleStatus(selectedCandidate.id, "rejected")}
-                  className="flex-1 bg-white border border-red-200 text-red-600 py-3 rounded-xl font-bold hover:bg-red-50 transition-colors"
+                  className="px-6 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-red-600 transition-colors"
                 >
-                  Reject
+                  Reject Candidate
                 </button>
                 <button
                   onClick={() => handleStatus(selectedCandidate.id, "approved")}
-                  className="flex-1 bg-black text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-colors shadow-lg"
+                  className="px-6 py-2 bg-black text-white rounded-md text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
                 >
                   Approve for Interview
                 </button>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-400">
-            Select a candidate to review details
-          </div>
-        )}
+          ) : (
+            <div className="hidden sm:flex flex-1 items-center justify-center text-gray-400 text-sm">
+              Select a candidate from the sidebar to view details.
+            </div>
+          )}
+        </div>
+      </div>
 
-        {/* Content Editor Modal */}
-        {isContentModalOpen && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b sticky top-0 bg-white z-10 flex justify-between items-center">
-                <h3 className="font-bold text-lg">Edit Career Page Content</h3>
-                <button onClick={() => setIsContentModalOpen(false)}>✕</button>
+      {/* Content Editor Modal (Reused Logic, Updated Style) */}
+      {isContentModalOpen && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-gray-200">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+              <h3 className="font-bold text-sm text-gray-900">
+                Career Page Configuration
+              </h3>
+              <button
+                onClick={() => setIsContentModalOpen(false)}
+                className="text-gray-500 hover:text-black"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 space-y-6 overflow-y-auto">
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-500 mb-1.5">
+                  Job Description
+                </label>
+                <textarea
+                  className="w-full p-3 border border-gray-200 rounded-md bg-white text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition font-sans min-h-[100px]"
+                  placeholder="Describe the role and responsibilities..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
               </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-bold mb-1">
-                    Job Description
-                  </label>
-                  <textarea
-                    className="w-full p-3 border rounded-lg h-32 focus:ring-2 focus:ring-indigo-500 outline-none"
-                    placeholder="Describe the role..."
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold mb-1">
-                    Requirements
-                  </label>
-                  <textarea
-                    className="w-full p-3 border rounded-lg h-32 focus:ring-2 focus:ring-indigo-500 outline-none"
-                    placeholder="- Must use Clean Architecture..."
-                    value={requirements}
-                    onChange={(e) => setRequirements(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold mb-1">
-                    Benefits
-                  </label>
-                  <textarea
-                    className="w-full p-3 border rounded-lg h-32 focus:ring-2 focus:ring-indigo-500 outline-none"
-                    placeholder="- Free Coffee..."
-                    value={benefits}
-                    onChange={(e) => setBenefits(e.target.value)}
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-500 mb-1.5">
+                  Requirements
+                </label>
+                <textarea
+                  className="w-full p-3 border border-gray-200 rounded-md bg-white text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition font-sans min-h-[100px]"
+                  placeholder="- Proficiency in Python..."
+                  value={requirements}
+                  onChange={(e) => setRequirements(e.target.value)}
+                />
               </div>
-              <div className="p-6 border-t bg-gray-50 flex justify-end gap-2 sticky bottom-0">
-                <button
-                  onClick={() => setIsContentModalOpen(false)}
-                  className="px-4 py-2 text-gray-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleUpdateContent}
-                  className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
-                >
-                  Save Changes
-                </button>
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-500 mb-1.5">
+                  Benefits
+                </label>
+                <textarea
+                  className="w-full p-3 border border-gray-200 rounded-md bg-white text-sm focus:border-black focus:ring-1 focus:ring-black outline-none transition font-sans min-h-[100px]"
+                  placeholder="- Health Insurance..."
+                  value={benefits}
+                  onChange={(e) => setBenefits(e.target.value)}
+                />
               </div>
             </div>
+            <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 shrink-0">
+              <button
+                onClick={() => setIsContentModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-black"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateContent}
+                className="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800"
+              >
+                Save Configuration
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
