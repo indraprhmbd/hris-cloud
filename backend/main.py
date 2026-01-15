@@ -110,21 +110,28 @@ def get_project(project_id: str):
     return project
 
 @app.patch("/projects/{project_id}", response_model=Project)
-def update_project(project_id: str, update: ProjectUpdate, user_id: str = Depends(get_current_user)):
+def update_project(project_id: str, updates: ProjectUpdate, user_id: str = Depends(get_current_user)):
     # Verify ownership
     proj_check = supabase.table("projects").select("id").eq("id", project_id).eq("owner_id", user_id).execute()
     if not proj_check.data:
-         raise HTTPException(status_code=403, detail="Not authorized")
+        raise HTTPException(status_code=403, detail="Not authorized")
     
-    project_data = {"name": update.name}
-    if update.description is not None:
-        project_data["description"] = update.description
-    if update.requirements is not None:
-        project_data["requirements"] = update.requirements
-    if update.benefits is not None:
-        project_data["benefits"] = update.benefits
-        
-    res = supabase.table("projects").update(project_data).eq("id", project_id).execute()
+    # Build update dict (only include non-None values)
+    update_data = {}
+    if updates.name is not None: # Changed from `if updates.name:` to handle empty string if name is Optional[str]
+        update_data["name"] = updates.name
+    if updates.description is not None:
+        update_data["description"] = updates.description
+    if updates.requirements is not None:
+        update_data["requirements"] = updates.requirements
+    if updates.benefits is not None:
+        update_data["benefits"] = updates.benefits
+    if updates.is_active is not None:
+        update_data["is_active"] = updates.is_active
+    
+    res = supabase.table("projects").update(update_data).eq("id", project_id).execute()
+    if not res.data:
+        raise HTTPException(status_code=500, detail="Update failed")
     return res.data[0]
 
 @app.post("/projects/{project_id}/keys", response_model=APIKey)
@@ -164,15 +171,23 @@ async def apply_candidate(
     if not x_project_id:
         raise HTTPException(status_code=400, detail="Missing Project ID")
 
-    # 2. Check Auth
+    # 2. Authenticate Request
     if x_api_key:
         key_check = supabase.table("api_keys").select("*").eq("key_value", x_api_key).eq("project_id", x_project_id).execute()
         if not key_check.data:
              raise HTTPException(status_code=403, detail="Invalid API Key")
     else:
-        proj_check = supabase.table("projects").select("id").eq("id", x_project_id).execute()
+        proj_check = supabase.table("projects").select("id, is_active").eq("id", x_project_id).execute()
         if not proj_check.data:
              raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Check if project is active
+        project = proj_check.data[0]
+        if not project.get("is_active", True):
+            raise HTTPException(
+                status_code=403, 
+                detail="This position is currently closed and not accepting applications"
+            )
 
     # 3. Read file content
     content = await cv.read()

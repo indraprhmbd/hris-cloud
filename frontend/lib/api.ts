@@ -88,6 +88,7 @@ export async function updateProject(
     description?: string;
     requirements?: string;
     benefits?: string;
+    is_active?: boolean;
   }
 ) {
   const headers = await getHeaders();

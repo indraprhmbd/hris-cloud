@@ -1,32 +1,37 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   createOrganization,
   getOrganizations,
   createProject,
   getProjects,
   generateApiKey,
+  updateProject,
 } from "@/lib/api";
+import CandidateTable from "./components/CandidateTable";
+import ProjectTable from "./components/ProjectTable";
 
 function DashboardContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const orgIdFromUrl = searchParams.get("orgId");
+
   const [orgs, setOrgs] = useState<any[]>([]);
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
   const [projects, setProjects] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<"candidates" | "projects">(
+    "candidates"
+  );
 
   const [newOrgName, setNewOrgName] = useState("");
   const [newProjectName, setNewProjectName] = useState("");
   const [apiKey, setApiKey] = useState<string | null>(null);
 
   // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false); // Project Modal
-  const [isOrgModalOpen, setIsOrgModalOpen] = useState(false); // Org Modal
-
-  // Standardized Template (Enterprise Default)
-  const defaultTemplate = "template-enterprise";
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isOrgModalOpen, setIsOrgModalOpen] = useState(false);
 
   useEffect(() => {
     loadOrgs();
@@ -74,7 +79,6 @@ function DashboardContent() {
   async function handleCreateProject() {
     if (!newProjectName || !selectedOrg) return;
     try {
-      // Always use the standard template ID, logically mapped to our single new design
       await createProject(selectedOrg, newProjectName, "template-modern");
       setNewProjectName("");
       setIsModalOpen(false);
@@ -89,15 +93,45 @@ function DashboardContent() {
     setApiKey(data.key_value);
   }
 
+  async function handleToggleProjectStatus(
+    projectId: string,
+    isActive: boolean
+  ) {
+    try {
+      await updateProject(projectId, { is_active: isActive });
+      loadProjects(selectedOrg!);
+    } catch (e: any) {
+      alert("Failed to update project status: " + e.message);
+    }
+  }
+
+  function handleProjectClick(project: any) {
+    router.push(`/dashboard/project/${project.id}`);
+  }
+
+  function handleCandidateClick(candidate: any) {
+    // Navigate to project with candidate selected
+    router.push(`/dashboard/project/${candidate.project_id}`);
+  }
+
+  // Aggregate all candidates from all projects
+  const allCandidates = projects.flatMap((project) =>
+    (project.applicants || []).map((applicant: any) => ({
+      ...applicant,
+      project_name: project.name,
+    }))
+  );
+
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       {selectedOrg ? (
         <div className="space-y-6">
+          {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-6">
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-xl font-bold tracking-tight text-gray-900">
-                  Projects
+                  Control Panel
                 </h2>
                 <span className="text-gray-300">/</span>
                 <div className="flex items-center gap-2">
@@ -122,103 +156,56 @@ function DashboardContent() {
                 </div>
               </div>
               <p className="text-sm text-gray-500">
-                Manage recruitment instances and API access for{" "}
-                {orgs.find((o) => o.id === selectedOrg)?.name}.
+                Manage candidates and recruitment projects
               </p>
             </div>
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="text-[10px] font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded hidden md:block">
-                ORG_ID: {selectedOrg}
-              </div>
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-shadow shadow-sm flex-1 sm:flex-none"
-              >
-                Create Project
-              </button>
-            </div>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-shadow shadow-sm w-full sm:w-auto"
+            >
+              Create Project
+            </button>
           </div>
 
-          {/* Projects Table */}
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Name
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell"
-                    >
-                      ID
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell"
-                    >
-                      Status
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {projects.map((project) => (
-                    <tr key={project.id} className="hover:bg-gray-50 table-row">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {project.name}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
-                        <code className="text-xs font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                          {project.id.slice(0, 8)}...
-                        </code>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                          Active
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
-                        <button
-                          onClick={() => handleGenerateKey(project.id)}
-                          className="text-gray-500 hover:text-black transition-colors text-xs uppercase"
-                        >
-                          API Key
-                        </button>
-                        <a
-                          href={`/dashboard/project/${project.id}`}
-                          className="text-indigo-600 hover:text-indigo-900 transition-colors"
-                        >
-                          Manage
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                  {projects.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={4}
-                        className="px-6 py-12 text-center text-sm text-gray-500"
-                      >
-                        No projects found. Create one to get started.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          {/* Tabs */}
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab("candidates")}
+                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === "candidates"
+                    ? "border-black text-black"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Candidates ({allCandidates.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("projects")}
+                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === "projects"
+                    ? "border-black text-black"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Projects ({projects.length})
+              </button>
+            </nav>
           </div>
+
+          {/* Tab Content */}
+          {activeTab === "candidates" ? (
+            <CandidateTable
+              candidates={allCandidates}
+              onRowClick={handleCandidateClick}
+            />
+          ) : (
+            <ProjectTable
+              projects={projects}
+              onToggleStatus={handleToggleProjectStatus}
+              onRowClick={handleProjectClick}
+            />
+          )}
         </div>
       ) : (
         <div className="text-center py-20 text-gray-500">
@@ -282,7 +269,7 @@ function DashboardContent() {
         </div>
       )}
 
-      {/* Create Project Modal - Simplified */}
+      {/* Create Project Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 border border-gray-200">

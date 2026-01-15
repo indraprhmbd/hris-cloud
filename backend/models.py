@@ -21,12 +21,14 @@ class ProjectUpdate(BaseModel):
     description: Optional[str] = None
     requirements: Optional[str] = None
     benefits: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class Project(BaseModel):
     id: UUID
     org_id: UUID
     name: str
     template_id: str
+    is_active: bool = True
     description: Optional[str]
     requirements: Optional[str]
     benefits: Optional[str]
@@ -53,7 +55,11 @@ class Applicant(BaseModel):
     ai_score: Optional[int]
     ai_reasoning: Optional[str]
     status: str
+    experience_years: Optional[int] = None
+    key_skills: Optional[str] = None
+    cv_valid: bool = True
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
 class ApplicantUpdate(BaseModel):
     status: str

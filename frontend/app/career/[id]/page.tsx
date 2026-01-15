@@ -105,6 +105,41 @@ export default function CareerPage() {
       </div>
     );
 
+  // Check if project is inactive
+  if (project.is_active === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans px-4">
+        <div className="text-center p-12 bg-white rounded-xl shadow-lg border border-gray-200 max-w-lg w-full">
+          <div className="w-16 h-16 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg
+              className="w-8 h-8"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            Position Closed
+          </h2>
+          <p className="text-gray-600 mb-6">
+            This position is currently not accepting new applications.
+          </p>
+          <p className="text-sm text-gray-500">
+            Thank you for your interest in{" "}
+            {project.org_name || "our organization"}.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen font-sans bg-gray-50 text-gray-900 selection:bg-gray-200">
       {/* Header */}
