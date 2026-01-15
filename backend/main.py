@@ -174,26 +174,25 @@ async def apply_candidate(
         if not proj_check.data:
              raise HTTPException(status_code=404, detail="Project not found")
 
-    # 3. Process File (Extract Text)
+    # 3. Read file content
     content = await cv.read()
-    cv_text = ""
     
-    if cv.filename.endswith(".pdf"):
-        try:
-            reader = PdfReader(io.BytesIO(content))
-            for page in reader.pages:
-                cv_text += page.extract_text() + "\n"
-        except Exception as e:
-            print(f"PDF Parse Error: {e}")
-            cv_text = "Failed to parse PDF content."
-    else:
-        # Assume text/md
-        cv_text = content.decode("utf-8", errors="ignore")
+    # 4. VALIDATION PIPELINE - Reject invalid files early
+    from validators import validate_cv_file
+    from extractors import extract_and_validate_cv_text
+    
+    # Step 4a: Validate file (extension, size, MIME type)
+    mime_type, _ = validate_cv_file(cv, content)
+    
+    # Step 4b: Extract and validate text quality
+    cv_text = extract_and_validate_cv_text(content, mime_type)
+    
+    # If we reach here, CV is valid and has good text quality
 
-    # 4. Run AI Agent
+    # 5. Run AI Agent (only on validated CVs)
     ai_result = score_candidate(name, email, cv_text)
     
-    # 5. Save to DB
+    # 6. Save to Database
     res = supabase.table("applicants").insert({
         "project_id": x_project_id,
         "name": name,

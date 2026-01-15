@@ -75,7 +75,7 @@ export default function ProjectDashboard() {
   const selectedCandidate = applicants.find((a) => a.id === selectedId);
 
   return (
-    <div className="flex h-full font-sans text-gray-900 bg-gray-50 overflow-hidden">
+    <div className="flex h-[calc(100vh-3.5rem)] font-sans text-gray-900 bg-gray-50 overflow-hidden">
       {/* Sidebar / List - Height 100% of container */}
       <div className="w-full sm:w-1/3 bg-white border-r border-gray-200 flex flex-col h-full z-10">
         {/* Local Toolbar */}
@@ -340,7 +340,7 @@ export default function ProjectDashboard() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-2">
+          <div className="hidden sm:flex flex-1 items-center justify-center text-gray-400 flex-col gap-2">
             <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-400 text-xl font-bold">
               ?
             </div>

@@ -10,3 +10,5 @@ python-multipart
 pypdf
 pyjwt
 resend
+python-magic
+python-docx
