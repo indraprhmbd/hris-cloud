@@ -88,7 +88,8 @@ export default function CVInboxPage() {
             </div>
           </div>
           <p className="text-xs text-gray-500">
-            AI-screened candidates awaiting review
+            AI-screened candidates awaiting review ({candidates.length} of{" "}
+            {allCandidates.length} total)
           </p>
         </div>
 

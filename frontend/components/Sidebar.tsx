@@ -47,9 +47,11 @@ export default function Sidebar() {
   };
 
   const isRecruitmentActive = () => {
-    return (
-      pathname.includes("/dashboard/recruitment") || pathname === "/dashboard"
-    );
+    return pathname.includes("/dashboard/recruitment");
+  };
+
+  const isOverviewActive = () => {
+    return pathname === "/dashboard";
   };
 
   return (
@@ -80,7 +82,7 @@ export default function Sidebar() {
         <Link
           href="/dashboard"
           className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-            pathname === "/dashboard"
+            isOverviewActive()
               ? "bg-black text-white shadow-md"
               : "text-gray-500 hover:bg-gray-50 hover:text-black"
           }`}

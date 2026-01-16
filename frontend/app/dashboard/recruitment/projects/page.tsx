@@ -9,7 +9,7 @@ import {
   deleteProject,
   updateProject,
 } from "@/lib/api";
-import { Trash2, Plus, ExternalLink } from "lucide-react";
+import { Trash2, Plus, ExternalLink, Edit2, X } from "lucide-react";
 
 interface Project {
   id: string;
@@ -28,6 +28,8 @@ export default function ProjectsPage() {
   const router = useRouter();
   const [newProjectName, setNewProjectName] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [editName, setEditName] = useState("");
 
   const { data: projects = [], mutate: mutateProjects } = useSWR<Project[]>(
     "projects-management",
@@ -61,6 +63,19 @@ export default function ProjectsPage() {
 
       setNewProjectName("");
       setIsModalOpen(false);
+      mutateProjects();
+    } catch (e: any) {
+      alert(e.message);
+    }
+  }
+
+  async function handleUpdateProject() {
+    if (!editingProject || !editName.trim()) return;
+
+    try {
+      await updateProject(editingProject.id, { name: editName });
+      setEditingProject(null);
+      setEditName("");
       mutateProjects();
     } catch (e: any) {
       alert(e.message);
@@ -141,9 +156,21 @@ export default function ProjectsPage() {
               <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-gray-900 truncate mb-1">
-                      {project.name}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-gray-900 truncate">
+                        {project.name}
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setEditingProject(project);
+                          setEditName(project.name);
+                        }}
+                        className="text-gray-400 hover:text-black transition-colors"
+                        title="Edit project name"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                    </div>
                     <p className="text-xs text-gray-500">
                       Created{" "}
                       {new Date(project.created_at).toLocaleDateString()}
@@ -276,6 +303,51 @@ export default function ProjectsPage() {
                 className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
               >
                 Create Project
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Project Modal */}
+      {editingProject && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Edit Project</h2>
+              <button
+                onClick={() => {
+                  setEditingProject(null);
+                  setEditName("");
+                }}
+                className="text-gray-400 hover:text-black"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Project name"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition text-sm mb-6"
+              autoFocus
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setEditingProject(null);
+                  setEditName("");
+                }}
+                className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateProject}
+                className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+              >
+                Save Changes
               </button>
             </div>
           </div>
