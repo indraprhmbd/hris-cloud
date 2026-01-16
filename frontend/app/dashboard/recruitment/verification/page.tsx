@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { getOrgApplicants } from "@/lib/api";
+import { createBrowserClient } from "@supabase/ssr";
 
 interface Applicant {
   id: string;
@@ -51,13 +52,25 @@ export default function VerificationPage() {
       return;
 
     try {
+      // Get auth headers
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data } = await supabase.auth.getSession();
+      const headers: any = { "Content-Type": "application/json" };
+      if (data.session) {
+        headers["Authorization"] = `Bearer ${data.session.access_token}`;
+        headers["x-user-id"] = data.session.user.id;
+      }
+
       const API_URL =
         process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const res = await fetch(
         `${API_URL}/applicants/${selectedCandidate.id}/verify`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify(formData),
         }
       );
