@@ -80,6 +80,7 @@ export default function VerificationPage() {
         throw new Error(error.detail || "Failed to verify candidate");
       }
 
+      const result = await res.json();
       alert("Candidate successfully verified and hired!");
       setSelectedId(null);
       setFormData({
@@ -90,7 +91,8 @@ export default function VerificationPage() {
       });
       mutate();
     } catch (e: any) {
-      alert(e.message);
+      console.error("Verification error:", e);
+      alert(e.message || "An error occurred during verification");
     }
   }
 
