@@ -11,6 +11,8 @@ import {
   generateApiKey,
   updateProject,
   getOrgApplicants,
+  deleteProject,
+  deleteApplicant,
 } from "@/lib/api";
 import CandidateTable from "./components/CandidateTable";
 import ProjectTable from "./components/ProjectTable";
@@ -136,6 +138,32 @@ function DashboardContent() {
     }
   }
 
+  async function handleDeleteProject(projectId: string) {
+    if (
+      !confirm(
+        "Are you sure you want to archive this project? This will also hide all associated candidates."
+      )
+    )
+      return;
+    try {
+      await deleteProject(projectId);
+      mutateProjects();
+      mutateCandidates();
+    } catch (e: any) {
+      alert("Failed to delete project: " + e.message);
+    }
+  }
+
+  async function handleDeleteCandidate(candidateId: string) {
+    if (!confirm("Are you sure you want to delete this candidate?")) return;
+    try {
+      await deleteApplicant(candidateId);
+      mutateCandidates();
+    } catch (e: any) {
+      alert("Failed to delete candidate: " + e.message);
+    }
+  }
+
   function handleProjectClick(project: any) {
     router.push(`/dashboard/project/${project.id}`);
   }
@@ -220,6 +248,7 @@ function DashboardContent() {
           {activeTab === "candidates" ? (
             <CandidateTable
               candidates={allCandidates}
+              onDelete={handleDeleteCandidate}
               onRowClick={handleCandidateClick}
             />
           ) : (
@@ -231,6 +260,7 @@ function DashboardContent() {
                 ).length,
               }))}
               onToggleStatus={handleToggleProjectStatus}
+              onDelete={handleDeleteProject}
               onRowClick={handleProjectClick}
             />
           )}

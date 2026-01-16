@@ -19,8 +19,11 @@ from pypdf import PdfReader
 from email_service import send_decision_email
 from rate_limiter import rate_limit_middleware
 from utils import calculate_cv_hash
+import datetime
 
 load_dotenv()
+
+EPOCH_SENTINEL = "1970-01-01 00:00:00+00"
 
 app = FastAPI(title="HRIS Cloud API")
 security = HTTPBearer()
@@ -104,8 +107,12 @@ def create_organization(org: OrganizationCreate, user_id: str = Depends(get_curr
 
 @app.get("/organizations", response_model=List[Organization])
 def list_organizations(user_id: str = Depends(get_current_user)):
-    # Filter by user_id
-    res = supabase.table("organizations").select("*").eq("owner_id", user_id).execute()
+    # Filter by user_id and not deleted
+    res = supabase.table("organizations")\
+        .select("*")\
+        .eq("owner_id", user_id)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .execute()
     return res.data
 
 @app.post("/projects", response_model=Project)
@@ -113,7 +120,12 @@ def create_project(project: ProjectCreate, user_id: str = Depends(get_current_us
 
          
     # Check Org Owner
-    org_check = supabase.table("organizations").select("id").eq("id", project.org_id).eq("owner_id", user_id).execute()
+    org_check = supabase.table("organizations")\
+        .select("id")\
+        .eq("id", project.org_id)\
+        .eq("owner_id", user_id)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .execute()
     if not org_check.data:
          raise HTTPException(status_code=403, detail="Not authorized for this Organization")
 
@@ -130,8 +142,13 @@ def create_project(project: ProjectCreate, user_id: str = Depends(get_current_us
 
 @app.get("/projects", response_model=List[Project])
 def list_projects(org_id: str, user_id: str = Depends(get_current_user)):
-    # Verify via owner_id match
-    res = supabase.table("projects").select("*").eq("org_id", org_id).eq("owner_id", user_id).execute()
+    # Verify via owner_id match and not deleted
+    res = supabase.table("projects")\
+        .select("*")\
+        .eq("org_id", org_id)\
+        .eq("owner_id", user_id)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .execute()
     return res.data
 
 @app.get("/organizations/{org_id}/applicants", response_model=List[Applicant])
@@ -141,21 +158,31 @@ def list_org_applicants(org_id: str, user_id: str = Depends(get_current_user)):
     Fixes the N+1 query problem by performing one large join.
     """
     # 1. Verify org ownership
-    org_check = supabase.table("organizations").select("id").eq("id", org_id).eq("owner_id", user_id).execute()
+    org_check = supabase.table("organizations")\
+        .select("id")\
+        .eq("id", org_id)\
+        .eq("owner_id", user_id)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .execute()
     if not org_check.data:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    # 2. Get all project IDs for this org
-    proj_res = supabase.table("projects").select("id").eq("org_id", org_id).execute()
+    # 2. Get all project IDs for this org (not deleted)
+    proj_res = supabase.table("projects")\
+        .select("id")\
+        .eq("org_id", org_id)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .execute()
     proj_ids = [p["id"] for p in proj_res.data]
     
     if not proj_ids:
         return []
     
-    # 3. Fetch all applicants for these projects
+    # 3. Fetch all applicants for these projects (not deleted)
     res = supabase.table("applicants")\
         .select("*, projects(name)")\
         .in_("project_id", proj_ids)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
         .order("created_at", desc=True)\
         .execute()
     
@@ -170,10 +197,12 @@ def list_org_applicants(org_id: str, user_id: str = Depends(get_current_user)):
 
 @app.get("/projects/{project_id}", response_model=Project)
 def get_project(project_id: str):
-    # Public endpoint allowed for Career Page (Auth handled via key or just ID existence)
-    # But ideally we should protect it if called from Dashboard.
-    # For MVP Career Page flow, this is public read.
-    res = supabase.table("projects").select("*").eq("id", project_id).execute()
+    # Public endpoint allowed for Career Page
+    res = supabase.table("projects")\
+        .select("*")\
+        .eq("id", project_id)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Project not found")
     
@@ -188,8 +217,13 @@ def get_project(project_id: str):
 
 @app.patch("/projects/{project_id}", response_model=Project)
 def update_project(project_id: str, updates: ProjectUpdate, user_id: str = Depends(get_current_user)):
-    # Verify ownership
-    proj_check = supabase.table("projects").select("id").eq("id", project_id).eq("owner_id", user_id).execute()
+    # Verify ownership and not deleted
+    proj_check = supabase.table("projects")\
+        .select("id")\
+        .eq("id", project_id)\
+        .eq("owner_id", user_id)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .execute()
     if not proj_check.data:
         raise HTTPException(status_code=403, detail="Not authorized")
     
@@ -213,7 +247,12 @@ def update_project(project_id: str, updates: ProjectUpdate, user_id: str = Depen
 
 @app.post("/projects/{project_id}/keys", response_model=APIKey)
 def generate_api_key(project_id: str, user_id: str = Depends(get_current_user)):
-    proj_check = supabase.table("projects").select("id").eq("id", project_id).eq("owner_id", user_id).execute()
+    proj_check = supabase.table("projects")\
+        .select("id")\
+        .eq("id", project_id)\
+        .eq("owner_id", user_id)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .execute()
     if not proj_check.data:
          raise HTTPException(status_code=403, detail="Not authorized for this Project")
 
@@ -291,7 +330,11 @@ async def apply_candidate(
         if not key_check.data:
              raise HTTPException(status_code=403, detail="Invalid API Key")
     else:
-        proj_check = supabase.table("projects").select("id, is_active").eq("id", x_project_id).execute()
+        proj_check = supabase.table("projects")\
+            .select("id, is_active")\
+            .eq("id", x_project_id)\
+            .eq("deleted_at", EPOCH_SENTINEL)\
+            .execute()
         if not proj_check.data:
              raise HTTPException(status_code=404, detail="Project not found")
         
@@ -309,8 +352,13 @@ async def apply_candidate(
     # Calculate hash for deduplication
     cv_hash = calculate_cv_hash(content)
     
-    # 4. Check for existing application with same hash in this project
-    existing_check = supabase.table("applicants").select("*").eq("project_id", x_project_id).eq("cv_hash", cv_hash).execute()
+    # 4. Check for existing application with same hash in this project (not deleted)
+    existing_check = supabase.table("applicants")\
+        .select("*")\
+        .eq("project_id", x_project_id)\
+        .eq("cv_hash", cv_hash)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .execute()
     if existing_check.data:
         # Deduplication hit - return existing record
         return existing_check.data[0]
@@ -348,11 +396,21 @@ async def apply_candidate(
 @app.get("/applicants", response_model=List[Applicant])
 def list_applicants(project_id: str, user_id: str = Depends(get_current_user)):
     # Verify Project Ownership before listing applicants
-    proj_check = supabase.table("projects").select("id").eq("id", project_id).eq("owner_id", user_id).execute()
+    proj_check = supabase.table("projects")\
+        .select("id")\
+        .eq("id", project_id)\
+        .eq("owner_id", user_id)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .execute()
     if not proj_check.data:
          raise HTTPException(status_code=403, detail="Not authorized for this Project")
 
-    res = supabase.table("applicants").select("*").eq("project_id", project_id).order("ai_score", desc=True).execute()
+    res = supabase.table("applicants")\
+        .select("*")\
+        .eq("project_id", project_id)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .order("ai_score", desc=True)\
+        .execute()
     return res.data
 
 class ApplicantUpdate(BaseModel):
@@ -369,7 +427,12 @@ def update_applicant(applicant_id: str, update: ApplicantUpdate, user_id: str = 
     project_id = applicant['project_id']
     
     # Verify ownership and get project name
-    proj_check = supabase.table("projects").select("id, name").eq("id", project_id).eq("owner_id", user_id).execute()
+    proj_check = supabase.table("projects")\
+        .select("id, name")\
+        .eq("id", project_id)\
+        .eq("owner_id", user_id)\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .execute()
     if not proj_check.data:
          raise HTTPException(status_code=403, detail="Not authorized")
     
@@ -380,3 +443,41 @@ def update_applicant(applicant_id: str, update: ApplicantUpdate, user_id: str = 
 
     res = supabase.table("applicants").update({"status": update.status}).eq("id", applicant_id).execute()
     return res.data[0]
+
+@app.delete("/projects/{project_id}")
+def delete_project(project_id: str, user_id: str = Depends(get_current_user)):
+    """Soft delete a project."""
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    
+    # 1. Verify ownership
+    proj_check = supabase.table("projects").select("id").eq("id", project_id).eq("owner_id", user_id).execute()
+    if not proj_check.data:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # 2. Update deleted_at
+    res = supabase.table("projects").update({"deleted_at": now}).eq("id", project_id).execute()
+    
+    # 3. Cascading Soft Delete for Applicants
+    supabase.table("applicants").update({"deleted_at": now}).eq("project_id", project_id).execute()
+    
+    return {"status": "success", "message": "Project archived"}
+
+@app.delete("/applicants/{applicant_id}")
+def delete_applicant(applicant_id: str, user_id: str = Depends(get_current_user)):
+    """Soft delete an applicant."""
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    
+    # 1. Verify ownership via project
+    app_res = supabase.table("applicants").select("project_id").eq("id", applicant_id).execute()
+    if not app_res.data:
+        raise HTTPException(status_code=404, detail="Applicant not found")
+        
+    project_id = app_res.data[0]["project_id"]
+    proj_check = supabase.table("projects").select("id").eq("id", project_id).eq("owner_id", user_id).execute()
+    if not proj_check.data:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # 2. Update deleted_at
+    supabase.table("applicants").update({"deleted_at": now}).eq("id", applicant_id).execute()
+    
+    return {"status": "success", "message": "Applicant archived"}

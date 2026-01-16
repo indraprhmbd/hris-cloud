@@ -134,3 +134,23 @@ export async function getOrgApplicants(orgId: string) {
   if (!res.ok) throw new Error("Failed to fetch organization applicants");
   return res.json();
 }
+
+export async function deleteProject(projectId: string) {
+  const headers = await getHeaders();
+  const res = await fetch(`${API_URL}/projects/${projectId}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) throw new Error("Failed to delete project");
+  return res.json();
+}
+
+export async function deleteApplicant(applicantId: string) {
+  const headers = await getHeaders();
+  const res = await fetch(`${API_URL}/applicants/${applicantId}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) throw new Error("Failed to delete applicant");
+  return res.json();
+}
