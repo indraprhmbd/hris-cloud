@@ -360,8 +360,12 @@ def verify_and_convert_applicant(
     if applicant["status"] != "interview_approved":
         raise HTTPException(status_code=400, detail="Only interview-approved applicants can be verified")
         
-    # 3. Check if already exists in employees (by email)
-    emp_check = supabase.table("employees").select("id").eq("email", applicant["email"]).execute()
+    # 3. Check if already exists in employees (by email, excluding deleted)
+    emp_check = supabase.table("employees")\
+        .select("id")\
+        .eq("email", applicant["email"])\
+        .eq("deleted_at", EPOCH_SENTINEL)\
+        .execute()
     if emp_check.data:
         raise HTTPException(status_code=400, detail="Employee with this email already exists")
 
