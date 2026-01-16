@@ -6,7 +6,8 @@ from pydantic import EmailStr
 from database import supabase, EPOCH_SENTINEL
 from dependencies import get_current_user
 from models import (
-    Organization, OrganizationCreate, Project, ProjectCreate, ProjectUpdate, Applicant, ApplicantUpdate, APIKey
+    Organization, OrganizationCreate, Project, ProjectCreate, ProjectUpdate, 
+    Applicant, ApplicantUpdate, APIKey, VerifyApplicantRequest
 )
 from services.ai_service import process_ai_score
 from validators import validate_cv_file, is_professional_cv
@@ -341,7 +342,7 @@ def convert_to_employee(applicant_id: str, user_id: str = Depends(get_current_us
 @router.post("/applicants/{applicant_id}/verify")
 def verify_and_convert_applicant(
     applicant_id: str,
-    request: models.VerifyApplicantRequest,
+    request: VerifyApplicantRequest,
     user_id: str = Depends(get_current_user)
 ):
     """
