@@ -47,5 +47,10 @@ create table applicants (
   ai_score integer,
   ai_reasoning text,
   status text default 'pending', -- pending, approved, rejected
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  cv_hash text, -- SHA-256 hash for deduplication
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique (project_id, cv_hash)
 );
+
+create index idx_applicants_cv_hash on applicants(cv_hash);
+

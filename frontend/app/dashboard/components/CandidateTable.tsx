@@ -71,6 +71,8 @@ export default function CandidateTable({
       pending: "bg-yellow-50 text-yellow-700 border-yellow-200",
       approved: "bg-green-50 text-green-700 border-green-200",
       rejected: "bg-red-50 text-red-700 border-red-200",
+      processing: "bg-blue-50 text-blue-700 border-blue-200 animate-pulse",
+      error: "bg-gray-100 text-gray-500 border-gray-200",
     };
     return (
       styles[status as keyof typeof styles] ||
@@ -166,14 +168,18 @@ export default function CandidateTable({
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium ${
-                        candidate.ai_score >= 80
+                        candidate.status === "processing"
+                          ? "bg-gray-50 text-gray-400"
+                          : candidate.ai_score >= 80
                           ? "bg-green-100 text-green-800"
                           : candidate.ai_score >= 50
                           ? "bg-yellow-100 text-yellow-800"
                           : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {candidate.ai_score}
+                      {candidate.status === "processing"
+                        ? "..."
+                        : candidate.ai_score}
                     </span>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">

@@ -9,6 +9,7 @@ interface Project {
   org_id: string;
   template_id: string;
   created_at: string;
+  applicant_count?: number;
 }
 
 interface ProjectTableProps {
@@ -33,6 +34,9 @@ export default function ProjectTable({
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                 Status
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Candidates
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
                 Created
@@ -68,6 +72,11 @@ export default function ProjectTable({
                     }`}
                   >
                     {project.is_active ? "Active" : "Inactive"}
+                  </span>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <span className="text-sm font-medium text-gray-900">
+                    {project.applicant_count || 0}
                   </span>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 hidden lg:table-cell">

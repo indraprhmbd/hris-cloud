@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import useSWR, { mutate } from "swr";
 import {
   createOrganization,
   getOrganizations,
@@ -9,7 +10,7 @@ import {
   getProjects,
   generateApiKey,
   updateProject,
-  getApplicants,
+  getOrgApplicants,
 } from "@/lib/api";
 import CandidateTable from "./components/CandidateTable";
 import ProjectTable from "./components/ProjectTable";
@@ -19,9 +20,7 @@ function DashboardContent() {
   const searchParams = useSearchParams();
   const orgIdFromUrl = searchParams.get("orgId");
 
-  const [orgs, setOrgs] = useState<any[]>([]);
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
-  const [projects, setProjects] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"candidates" | "projects">(
     "candidates"
   );
@@ -34,64 +33,48 @@ function DashboardContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOrgModalOpen, setIsOrgModalOpen] = useState(false);
 
-  useEffect(() => {
-    loadOrgs();
-  }, []);
+  // --- SWR Hooks for Caching & Performance ---
 
-  useEffect(() => {
-    if (selectedOrg) {
-      loadProjects(selectedOrg);
-    }
-  }, [selectedOrg]);
+  // 1. Organizations
+  const { data: orgs = [], mutate: mutateOrgs } = useSWR(
+    "organizations",
+    getOrganizations
+  );
 
-  async function loadOrgs() {
-    try {
-      const data = await getOrganizations();
-      setOrgs(data);
-      if (data.length > 0) {
-        if (orgIdFromUrl) {
-          setSelectedOrg(orgIdFromUrl);
-        } else if (!selectedOrg) {
-          setSelectedOrg(data[0].id);
-        }
+  // Sync selectedOrg with URL or first org
+  useEffect(() => {
+    if (orgs.length > 0) {
+      if (orgIdFromUrl) {
+        setSelectedOrg(orgIdFromUrl);
+      } else if (!selectedOrg) {
+        setSelectedOrg(orgs[0].id);
       }
-    } catch (e) {
-      console.error(e);
     }
-  }
+  }, [orgs, orgIdFromUrl, selectedOrg]);
 
-  async function loadProjects(orgId: string) {
-    try {
-      const data = await getProjects(orgId);
+  // 2. Projects (Bulk fetch for the selected org)
+  const { data: projects = [], mutate: mutateProjects } = useSWR(
+    selectedOrg ? `org/${selectedOrg}/projects` : null,
+    () => getProjects(selectedOrg!)
+  );
 
-      // Fetch applicants for each project
-      const projectsWithApplicants = await Promise.all(
-        data.map(async (project: any) => {
-          try {
-            const applicants = await getApplicants(project.id);
-            return { ...project, applicants };
-          } catch (e) {
-            console.error(
-              `Failed to load applicants for project ${project.id}`,
-              e
-            );
-            return { ...project, applicants: [] };
-          }
-        })
-      );
-
-      setProjects(projectsWithApplicants);
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  // 3. Applicants (Bulk fetch for the entire org - Fixes N+1)
+  const {
+    data: allCandidates = [],
+    mutate: mutateCandidates,
+    isLoading: isLoadingCandidates,
+  } = useSWR(
+    selectedOrg ? `org/${selectedOrg}/applicants` : null,
+    () => getOrgApplicants(selectedOrg!),
+    { refreshInterval: 10000 } // Refresh every 10s to see AI processing status updates
+  );
 
   async function handleCreateOrg() {
     if (!newOrgName) return;
     await createOrganization(newOrgName);
     setNewOrgName("");
     setIsOrgModalOpen(false);
-    loadOrgs();
+    mutateOrgs();
   }
 
   async function handleCreateProject() {
@@ -100,7 +83,7 @@ function DashboardContent() {
       await createProject(selectedOrg, newProjectName, "template-modern");
       setNewProjectName("");
       setIsModalOpen(false);
-      loadProjects(selectedOrg);
+      mutateProjects();
     } catch (e: any) {
       alert("Failed: " + e.message);
     }
@@ -117,7 +100,7 @@ function DashboardContent() {
   ) {
     try {
       await updateProject(projectId, { is_active: isActive });
-      loadProjects(selectedOrg!);
+      mutateProjects();
     } catch (e: any) {
       alert("Failed to update project status: " + e.message);
     }
@@ -131,14 +114,6 @@ function DashboardContent() {
     // Navigate to project with candidate selected
     router.push(`/dashboard/project/${candidate.project_id}`);
   }
-
-  // Aggregate all candidates from all projects
-  const allCandidates = projects.flatMap((project) =>
-    (project.applicants || []).map((applicant: any) => ({
-      ...applicant,
-      project_name: project.name,
-    }))
-  );
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -219,7 +194,12 @@ function DashboardContent() {
             />
           ) : (
             <ProjectTable
-              projects={projects}
+              projects={projects.map((p: any) => ({
+                ...p,
+                applicant_count: allCandidates.filter(
+                  (c: any) => c.project_id === p.id
+                ).length,
+              }))}
               onToggleStatus={handleToggleProjectStatus}
               onRowClick={handleProjectClick}
             />

@@ -124,3 +124,13 @@ export async function updateApplicantStatus(
   if (!res.ok) throw new Error("Failed to update applicant");
   return res.json();
 }
+
+export async function getOrgApplicants(orgId: string) {
+  const headers = await getHeaders();
+  delete headers["Content-Type"];
+  const res = await fetch(`${API_URL}/organizations/${orgId}/applicants`, {
+    headers,
+  });
+  if (!res.ok) throw new Error("Failed to fetch organization applicants");
+  return res.json();
+}

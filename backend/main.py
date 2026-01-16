@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, Request
+from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile, File, Form, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, constr
@@ -18,6 +18,7 @@ from pydantic import ValidationError
 from pypdf import PdfReader
 from email_service import send_decision_email
 from rate_limiter import rate_limit_middleware
+from utils import calculate_cv_hash
 
 load_dotenv()
 
@@ -133,6 +134,40 @@ def list_projects(org_id: str, user_id: str = Depends(get_current_user)):
     res = supabase.table("projects").select("*").eq("org_id", org_id).eq("owner_id", user_id).execute()
     return res.data
 
+@app.get("/organizations/{org_id}/applicants", response_model=List[Applicant])
+def list_org_applicants(org_id: str, user_id: str = Depends(get_current_user)):
+    """
+    Optimized bulk endpoint to fetch all applicants for an organization.
+    Fixes the N+1 query problem by performing one large join.
+    """
+    # 1. Verify org ownership
+    org_check = supabase.table("organizations").select("id").eq("id", org_id).eq("owner_id", user_id).execute()
+    if not org_check.data:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # 2. Get all project IDs for this org
+    proj_res = supabase.table("projects").select("id").eq("org_id", org_id).execute()
+    proj_ids = [p["id"] for p in proj_res.data]
+    
+    if not proj_ids:
+        return []
+    
+    # 3. Fetch all applicants for these projects
+    res = supabase.table("applicants")\
+        .select("*, projects(name)")\
+        .in_("project_id", proj_ids)\
+        .order("created_at", desc=True)\
+        .execute()
+    
+    # Flatten the project name into the applicant object
+    flattened = []
+    for item in res.data:
+        project_name = item.get("projects", {}).get("name", "Unknown")
+        item["project_name"] = project_name
+        flattened.append(item)
+        
+    return flattened
+
 @app.get("/projects/{project_id}", response_model=Project)
 def get_project(project_id: str):
     # Public endpoint allowed for Career Page (Auth handled via key or just ID existence)
@@ -206,8 +241,30 @@ class ApplicantInput(BaseModel):
     name: constr(min_length=2, max_length=100, strip_whitespace=True)
     email: EmailStr
 
+async def process_ai_score(applicant_id: str, name: str, email: str, cv_text: str):
+    """Background task to process AI scoring and update database."""
+    try:
+        # Run AI Agent
+        ai_result = score_candidate(name, email, cv_text)
+        
+        # Update Database
+        supabase.table("applicants").update({
+            "ai_score": ai_result.get("score", 0),
+            "ai_reasoning": ai_result.get("reasoning", "AI Analysis Failed"),
+            "status": "pending" # Initial status after AI processing
+        }).eq("id", applicant_id).execute()
+        
+        print(f"DEBUG: Background AI processing complete for {applicant_id}")
+    except Exception as e:
+        print(f"ERROR: Background AI processing failed for {applicant_id}: {str(e)}")
+        supabase.table("applicants").update({
+            "ai_reasoning": f"Background Error: {str(e)}",
+            "status": "error"
+        }).eq("id", applicant_id).execute()
+
 @app.post("/apply", response_model=Applicant)
 async def apply_candidate(
+    background_tasks: BackgroundTasks,
     name: str = Form(...),
     email: str = Form(...),
     cv: UploadFile = File(...),
@@ -249,36 +306,44 @@ async def apply_candidate(
     # 3. Read file content
     content = await cv.read()
     
-    # 4. VALIDATION PIPELINE - Reject invalid files early
+    # Calculate hash for deduplication
+    cv_hash = calculate_cv_hash(content)
+    
+    # 4. Check for existing application with same hash in this project
+    existing_check = supabase.table("applicants").select("*").eq("project_id", x_project_id).eq("cv_hash", cv_hash).execute()
+    if existing_check.data:
+        # Deduplication hit - return existing record
+        return existing_check.data[0]
+
+    # 5. VALIDATION PIPELINE - Reject invalid files early
     from validators import validate_cv_file
     from extractors import extract_and_validate_cv_text
     
-    # Step 4a: Validate file (extension, size, MIME type)
+    # Step 5a: Validate file (extension, size, MIME type)
     mime_type, _ = validate_cv_file(cv, content)
     
-    # Step 4b: Extract and validate text quality
+    # Step 5b: Extract and validate text quality
     cv_text = extract_and_validate_cv_text(content, mime_type)
     
-    # If we reach here, CV is valid and has good text quality
-
-    # 5. Run AI Agent (only on validated CVs)
-    ai_result = score_candidate(name, email, cv_text)
-    
-    # 6. Save to Database
+    # 6. Save to Database with "processing" state
     res = supabase.table("applicants").insert({
         "project_id": x_project_id,
         "name": name,
         "email": email,
-        "cv_text": cv_text, # Storing extracted text for MVP
-        "ai_score": ai_result.get("score", 0),
-        "ai_reasoning": ai_result.get("reasoning", "AI Analysis Failed"),
-        "status": "pending"
+        "cv_text": cv_text,
+        "cv_hash": cv_hash,
+        "status": "processing" # Tell frontend it's working
     }).execute()
     
     if not res.data:
         raise HTTPException(status_code=500, detail="Failed to save application")
     
-    return res.data[0]
+    applicant = res.data[0]
+    
+    # 7. Start AI Agent in Background
+    background_tasks.add_task(process_ai_score, applicant["id"], name, email, cv_text)
+    
+    return applicant
 
 @app.get("/applicants", response_model=List[Applicant])
 def list_applicants(project_id: str, user_id: str = Depends(get_current_user)):
