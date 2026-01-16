@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -13,6 +14,7 @@ export default function Sidebar() {
   const [projects, setProjects] = useState<any[]>([]);
   const [currentProject, setCurrentProject] = useState<any>(null);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
+  const [isRecruitmentOpen, setIsRecruitmentOpen] = useState(false);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,6 +34,13 @@ export default function Sidebar() {
       setCurrentProject(null);
     }
   }, [params.id, projects]);
+
+  // Auto-expand Recruitment if on any recruitment sub-page
+  useEffect(() => {
+    if (pathname.includes("/dashboard/recruitment")) {
+      setIsRecruitmentOpen(true);
+    }
+  }, [pathname]);
 
   async function getUser() {
     const {
@@ -59,10 +68,15 @@ export default function Sidebar() {
   }
 
   const isActive = (path: string) => {
-    // Exact match for dashboard root to avoid highlighting everything
     if (path === "/dashboard" && pathname === "/dashboard") return true;
     if (path !== "/dashboard" && pathname.startsWith(path)) return true;
     return false;
+  };
+
+  const isRecruitmentActive = () => {
+    return (
+      pathname.includes("/dashboard/recruitment") || pathname === "/dashboard"
+    );
   };
 
   return (
@@ -149,31 +163,75 @@ export default function Sidebar() {
           Core HR
         </p>
 
-        <Link
-          href="/dashboard"
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-            isActive("/dashboard") &&
-            !pathname.includes("employees") &&
-            !pathname.includes("policy")
-              ? "bg-black text-white shadow-md"
-              : "text-gray-500 hover:bg-gray-50 hover:text-black"
-          }`}
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {/* Recruitment with Sub-Menu */}
+        <div>
+          <button
+            onClick={() => setIsRecruitmentOpen(!isRecruitmentOpen)}
+            className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              isRecruitmentActive()
+                ? "bg-black text-white shadow-md"
+                : "text-gray-500 hover:bg-gray-50 hover:text-black"
+            }`}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-            />
-          </svg>
-          Recruitment
-        </Link>
+            <div className="flex items-center gap-3">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+              <span>Recruitment</span>
+            </div>
+            {isRecruitmentOpen ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </button>
+
+          {/* Sub-Navigation */}
+          {isRecruitmentOpen && (
+            <div className="ml-7 mt-1 space-y-1 border-l-2 border-gray-100 pl-3">
+              <Link
+                href="/dashboard/recruitment/inbox"
+                className={`block px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  pathname === "/dashboard/recruitment/inbox"
+                    ? "bg-gray-100 text-black"
+                    : "text-gray-500 hover:bg-gray-50 hover:text-black"
+                }`}
+              >
+                CV Inbox
+              </Link>
+              <Link
+                href="/dashboard/recruitment/interview"
+                className={`block px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  pathname === "/dashboard/recruitment/interview"
+                    ? "bg-gray-100 text-black"
+                    : "text-gray-500 hover:bg-gray-50 hover:text-black"
+                }`}
+              >
+                Interview
+              </Link>
+              <Link
+                href="/dashboard/recruitment/verification"
+                className={`block px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  pathname === "/dashboard/recruitment/verification"
+                    ? "bg-gray-100 text-black"
+                    : "text-gray-500 hover:bg-gray-50 hover:text-black"
+                }`}
+              >
+                Verification
+              </Link>
+            </div>
+          )}
+        </div>
 
         <Link
           href="/dashboard/employees"

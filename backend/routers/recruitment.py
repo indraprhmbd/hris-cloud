@@ -337,3 +337,53 @@ def convert_to_employee(applicant_id: str, user_id: str = Depends(get_current_us
     supabase.table("applicants").update({"status": "hired"}).eq("id", applicant_id).execute()
     
     return {"status": "success", "message": "Candidate successfully hired", "employee_id": res.data[0]["id"]}
+
+@router.post("/applicants/{applicant_id}/verify")
+def verify_and_convert_applicant(
+    applicant_id: str,
+    department: str,
+    role: str,
+    join_date: str,
+    leave_remaining: int = 12,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Verification stage: HR fills complete employee data before final conversion.
+    This is the final manual step before creating an employee record.
+    """
+    # 1. Fetch Applicant
+    app_res = supabase.table("applicants").select("*").eq("id", applicant_id).execute()
+    if not app_res.data:
+        raise HTTPException(status_code=404, detail="Applicant not found")
+    
+    applicant = app_res.data[0]
+    
+    # 2. Verify Status (must be interview_approved)
+    if applicant["status"] != "interview_approved":
+        raise HTTPException(status_code=400, detail="Only interview-approved applicants can be verified")
+        
+    # 3. Check if already exists in employees (by email)
+    emp_check = supabase.table("employees").select("id").eq("email", applicant["email"]).execute()
+    if emp_check.data:
+        raise HTTPException(status_code=400, detail="Employee with this email already exists")
+
+    # 4. Create Employee Record with HR-provided data
+    new_employee = {
+        "name": applicant["name"],
+        "email": applicant["email"],
+        "role": role,
+        "department": department,
+        "leave_remaining": leave_remaining,
+        "status": "active",
+        "join_date": join_date
+    }
+    
+    res = supabase.table("employees").insert(new_employee).execute()
+    
+    if not res.data:
+         raise HTTPException(status_code=500, detail="Failed to create employee record")
+         
+    # 5. Update Applicant Status to 'hired' to prevent double conversion
+    supabase.table("applicants").update({"status": "hired"}).eq("id", applicant_id).execute()
+    
+    return {"status": "success", "message": "Candidate verified and hired", "employee_id": res.data[0]["id"]}
