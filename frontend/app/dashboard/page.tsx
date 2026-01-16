@@ -1,286 +1,289 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
-import {
-  createProject,
-  getProjects,
-  generateApiKey,
-  updateProject,
-  getOrgApplicants,
-  deleteProject,
-  deleteApplicant,
-} from "@/lib/api";
-import CandidateTable from "./components/CandidateTable";
-import ProjectTable from "./components/ProjectTable";
+import { getProjects, getOrgApplicants } from "@/lib/api";
+import Link from "next/link";
+import { Users, FileText, CheckCircle, Clock, TrendingUp } from "lucide-react";
 
 interface Project {
   id: string;
   name: string;
   is_active: boolean;
-  org_id: string;
-  template_id: string;
   created_at: string;
-  applicant_count?: number;
 }
 
 interface Applicant {
   id: string;
   name: string;
   email: string;
-  project_id: string;
-  project_name?: string;
-  ai_score: number;
   status: string;
-  cv_valid?: boolean;
+  ai_score: number;
   created_at: string;
-  updated_at?: string;
 }
 
-function DashboardContent() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"candidates" | "projects">(
-    "candidates"
+export default function DashboardOverview() {
+  const { data: projects = [] } = useSWR<Project[]>("projects", getProjects);
+  const { data: applicants = [] } = useSWR<Applicant[]>(
+    "applicants-overview",
+    getOrgApplicants,
+    { refreshInterval: 10000 }
   );
 
-  const [newProjectName, setNewProjectName] = useState("");
-  const [apiKey, setApiKey] = useState<string | null>(null);
+  // Calculate statistics
+  const stats = {
+    totalProjects: projects.length,
+    activeProjects: projects.filter((p) => p.is_active).length,
+    totalApplicants: applicants.length,
+    inboxCount: applicants.filter(
+      (a) => a.status === "processing" || a.status === "interview_pending"
+    ).length,
+    interviewCount: applicants.filter((a) => a.status === "interview_pending")
+      .length,
+    verificationCount: applicants.filter(
+      (a) => a.status === "interview_approved"
+    ).length,
+    hiredCount: applicants.filter((a) => a.status === "hired").length,
+  };
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // --- SWR Hooks for Caching & Performance ---
-
-  // 1. Projects
-  const { data: projects = [] as Project[], mutate: mutateProjects } = useSWR<
-    Project[]
-  >("projects", getProjects);
-
-  // 2. Applicants (Bulk fetch for the entire org - Fixes N+1)
-  const { data: allCandidates = [] as Applicant[], mutate: mutateCandidates } =
-    useSWR<Applicant[]>("applicants-all", getOrgApplicants, {
-      refreshInterval: 10000,
-    });
-
-  async function handleCreateProject() {
-    if (!newProjectName) return;
-    try {
-      await createProject(newProjectName, "template-modern");
-      setNewProjectName("");
-      setIsModalOpen(false);
-      mutateProjects();
-    } catch (e: any) {
-      alert("Failed: " + e.message);
-    }
-  }
-
-  async function handleGenerateKey(projectId: string) {
-    const data = await generateApiKey(projectId);
-    setApiKey(data.key_value);
-  }
-
-  async function handleToggleProjectStatus(
-    projectId: string,
-    isActive: boolean
-  ) {
-    try {
-      await updateProject(projectId, { is_active: isActive });
-      mutateProjects();
-    } catch (e: any) {
-      alert("Failed to update project status: " + e.message);
-    }
-  }
-
-  async function handleDeleteProject(projectId: string) {
-    if (
-      !confirm(
-        "Are you sure you want to archive this project? This will also hide all associated candidates."
-      )
+  const recentApplicants = applicants
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
-      return;
-    try {
-      await deleteProject(projectId);
-      mutateProjects();
-      mutateCandidates();
-    } catch (e: any) {
-      alert("Failed to delete project: " + e.message);
-    }
-  }
-
-  async function handleDeleteCandidate(candidateId: string) {
-    if (!confirm("Are you sure you want to delete this candidate?")) return;
-    try {
-      await deleteApplicant(candidateId);
-      mutateCandidates();
-    } catch (e: any) {
-      alert("Failed to delete candidate: " + e.message);
-    }
-  }
-
-  function handleProjectClick(project: any) {
-    router.push(`/dashboard/project/${project.id}`);
-  }
-
-  function handleCandidateClick(candidate: any) {
-    router.push(`/dashboard/project/${candidate.project_id}`);
-  }
+    .slice(0, 5);
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-6">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-gray-900">
-              Recruitment Overview
-            </h2>
-            <p className="text-sm text-gray-500">
-              Manage candidates and hiring projects
-            </p>
-          </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-shadow shadow-sm w-full sm:w-auto"
-          >
-            Create Project
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab("candidates")}
-              className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === "candidates"
-                  ? "border-black text-black"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Candidates ({allCandidates.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("projects")}
-              className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === "projects"
-                  ? "border-black text-black"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Projects ({projects.length})
-            </button>
-          </nav>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === "candidates" ? (
-          <CandidateTable
-            candidates={allCandidates}
-            onDelete={handleDeleteCandidate}
-            onRowClick={handleCandidateClick}
-          />
-        ) : (
-          <ProjectTable
-            projects={projects.map((p: Project) => ({
-              ...p,
-              applicant_count: allCandidates.filter(
-                (c: Applicant) => c.project_id === p.id
-              ).length,
-            }))}
-            onToggleStatus={handleToggleProjectStatus}
-            onDelete={handleDeleteProject}
-            onRowClick={handleProjectClick}
-          />
-        )}
+    <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Dashboard Overview
+        </h1>
+        <p className="text-sm text-gray-500">
+          Welcome to HARIS - Your AI-Assisted HR Management System
+        </p>
       </div>
 
-      {/* API Key Modal */}
-      {apiKey && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-lg max-w-lg w-full shadow-xl border border-gray-200">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
-              API Key Generated
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              This key allows external systems to submit candidates to this
-              project. It will not be shown again.
-            </p>
-            <div className="bg-gray-100 p-3 rounded border border-gray-200 mb-6 font-mono text-sm break-all text-gray-800">
-              {apiKey}
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Link
+          href="/dashboard/recruitment/inbox"
+          className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+              <FileText className="w-6 h-6 text-blue-600" />
             </div>
-            <button
-              onClick={() => setApiKey(null)}
-              className="w-full bg-black text-white py-2 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+              CV Inbox
+            </span>
+          </div>
+          <div className="text-3xl font-black text-gray-900 mb-1">
+            {stats.inboxCount}
+          </div>
+          <div className="text-xs text-gray-500">Awaiting review</div>
+        </Link>
+
+        <Link
+          href="/dashboard/recruitment/interview"
+          className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+              <Users className="w-6 h-6 text-purple-600" />
+            </div>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+              Interview
+            </span>
+          </div>
+          <div className="text-3xl font-black text-gray-900 mb-1">
+            {stats.interviewCount}
+          </div>
+          <div className="text-xs text-gray-500">Pending approval</div>
+        </Link>
+
+        <Link
+          href="/dashboard/recruitment/verification"
+          className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center group-hover:bg-amber-200 transition-colors">
+              <Clock className="w-6 h-6 text-amber-600" />
+            </div>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+              Verification
+            </span>
+          </div>
+          <div className="text-3xl font-black text-gray-900 mb-1">
+            {stats.verificationCount}
+          </div>
+          <div className="text-xs text-gray-500">Ready to onboard</div>
+        </Link>
+
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+            </div>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+              Hired
+            </span>
+          </div>
+          <div className="text-3xl font-black text-gray-900 mb-1">
+            {stats.hiredCount}
+          </div>
+          <div className="text-xs text-gray-500">Total conversions</div>
+        </div>
+      </div>
+
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Applicants */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+          <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+            <div>
+              <h2 className="font-bold text-sm text-gray-900">
+                Recent Applicants
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Latest {recentApplicants.length} submissions
+              </p>
+            </div>
+            <Link
+              href="/dashboard/recruitment/inbox"
+              className="text-xs font-medium text-blue-600 hover:text-blue-700"
             >
-              Done
-            </button>
+              View All →
+            </Link>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {recentApplicants.map((app) => (
+              <div
+                key={app.id}
+                className="p-4 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">
+                      {app.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {app.name}
+                      </div>
+                      <div className="text-xs text-gray-500 font-mono">
+                        {app.email}
+                      </div>
+                    </div>
+                  </div>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      app.ai_score >= 80
+                        ? "bg-green-100 text-green-700"
+                        : app.ai_score >= 50
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {app.ai_score}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <span className="capitalize">
+                    {app.status.replace("_", " ")}
+                  </span>
+                  <span>•</span>
+                  <span>{new Date(app.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+            ))}
+            {recentApplicants.length === 0 && (
+              <div className="p-8 text-center text-gray-400 text-xs">
+                No applicants yet
+              </div>
+            )}
           </div>
         </div>
-      )}
 
-      {/* Create Project Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 border border-gray-200">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-gray-900">New Project</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-black"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Project Name
-                </label>
-                <input
-                  className="w-full p-2.5 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:border-black outline-none transition text-sm"
-                  placeholder="e.g. Q1 Hiring - Senior Backend"
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  autoFocus
-                />
+        {/* Active Projects */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+          <div className="p-4 border-b border-gray-100">
+            <h2 className="font-bold text-sm text-gray-900">Active Projects</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {stats.activeProjects} of {stats.totalProjects} projects active
+            </p>
+          </div>
+          <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+            {projects
+              .filter((p) => p.is_active)
+              .map((project) => {
+                const projectApplicants = applicants.filter(
+                  (a) => a.status !== "rejected"
+                );
+                return (
+                  <div
+                    key={project.id}
+                    className="p-4 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {project.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Created{" "}
+                          {new Date(project.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+                        <Users className="w-3 h-3" />
+                        {projectApplicants.length}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            {stats.activeProjects === 0 && (
+              <div className="p-8 text-center text-gray-400 text-xs">
+                No active projects
               </div>
-
-              <div className="bg-gray-50 p-4 rounded-md border border-gray-200 text-sm text-gray-600">
-                <p>
-                  This will create a new recruitment instance using the{" "}
-                  <strong>Standard Enterprise</strong> schema. You can customize
-                  job descriptions and requirements after creation.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateProject}
-                className="px-4 py-2 text-sm font-medium bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
-              >
-                Create Project
-              </button>
-            </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="mt-8 bg-gradient-to-br from-black to-gray-800 rounded-lg p-6 text-white">
+        <h2 className="font-bold text-lg mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Link
+            href="/dashboard/recruitment/inbox"
+            className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg p-4 transition-colors border border-white/10"
+          >
+            <div className="text-sm font-medium mb-1">Review CVs</div>
+            <div className="text-xs text-gray-300">
+              {stats.inboxCount} candidates waiting
+            </div>
+          </Link>
+          <Link
+            href="/dashboard/employees"
+            className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg p-4 transition-colors border border-white/10"
+          >
+            <div className="text-sm font-medium mb-1">Manage Employees</div>
+            <div className="text-xs text-gray-300">View employee database</div>
+          </Link>
+          <Link
+            href="/dashboard/policy"
+            className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg p-4 transition-colors border border-white/10"
+          >
+            <div className="text-sm font-medium mb-1">Policy Management</div>
+            <div className="text-xs text-gray-300">
+              Upload & monitor policies
+            </div>
+          </Link>
+        </div>
+      </div>
     </div>
-  );
-}
-
-export default function Dashboard() {
-  return (
-    <Suspense fallback={<div>Loading Dashboard...</div>}>
-      <DashboardContent />
-    </Suspense>
   );
 }
