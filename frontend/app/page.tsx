@@ -1,5 +1,15 @@
 import Link from "next/link";
-import { ArrowRight, Shield, Users, Zap, Layout, Play } from "lucide-react";
+import {
+  ArrowRight,
+  Shield,
+  Users,
+  Zap,
+  Layout,
+  Play,
+  CheckCircle,
+  BarChart,
+  Bot,
+} from "lucide-react";
 
 export default function Home() {
   return (
@@ -77,7 +87,10 @@ export default function Home() {
         </div>
 
         {/* Hero Visual Mockup */}
-        <div className="mt-20 max-w-5xl mx-auto rounded-xl border border-gray-200 shadow-2xl shadow-gray-200/50 overflow-hidden bg-gray-50 select-none">
+        <div
+          id="demo"
+          className="mt-20 max-w-5xl mx-auto rounded-xl border border-gray-200 shadow-2xl shadow-gray-200/50 overflow-hidden bg-gray-50 select-none"
+        >
           <div className="bg-white border-b border-gray-100 p-4 flex items-center gap-4">
             <div className="flex gap-2">
               <div className="w-3 h-3 rounded-full bg-red-100 border border-red-200"></div>
@@ -145,46 +158,100 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="py-24 px-6 border-b border-gray-100">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12">
-          <div className="space-y-4">
-            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
-              <Zap className="w-6 h-6" />
-            </div>
-            <h4 className="text-xl font-bold">Smart Recruitment</h4>
-            <p className="text-gray-500">
-              AI screening with rule-based pre-filtering to ensure only
-              qualified talent hits your desk.
+      <section id="features" className="py-24 px-6 border-b border-gray-100">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold tracking-tight mb-4">
+              Agentic Capabilities
+            </h2>
+            <p className="text-gray-500 max-w-2xl mx-auto">
+              Built to augment your team, not replace it. Explore how HARIS
+              helps you scale operations.
             </p>
           </div>
-          <div className="space-y-4">
-            <div className="w-12 h-12 bg-green-50 text-green-600 rounded-lg flex items-center justify-center">
-              <Shield className="w-6 h-6" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            <div className="space-y-4 p-6 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-lg transition">
+              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                <Zap className="w-6 h-6" />
+              </div>
+              <h4 className="text-xl font-bold">Smart Recruitment</h4>
+              <p className="text-gray-500">
+                AI screening with rule-based pre-filtering to ensure only
+                qualified talent hits your desk.
+              </p>
             </div>
-            <h4 className="text-xl font-bold">Policy Knowledge</h4>
-            <p className="text-gray-500">
-              Transparent AI assistant that explains policies to employees
-              without executing sensitive actions.
-            </p>
+            <div className="space-y-4 p-6 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-lg transition">
+              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center">
+                <Shield className="w-6 h-6" />
+              </div>
+              <h4 className="text-xl font-bold">Policy Knowledge</h4>
+              <p className="text-gray-500">
+                Transparent AI assistant that explains policies to employees
+                without executing sensitive actions.
+              </p>
+            </div>
+            <div className="space-y-4 p-6 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-lg transition">
+              <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center">
+                <Layout className="w-6 h-6" />
+              </div>
+              <h4 className="text-xl font-bold">Human Governance</h4>
+              <p className="text-gray-500">
+                One-click conversion from approved candidate to employee
+                database with full audit logging.
+              </p>
+            </div>
           </div>
-          <div className="space-y-4">
-            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center">
-              <Layout className="w-6 h-6" />
-            </div>
-            <h4 className="text-xl font-bold">Human Governance</h4>
-            <p className="text-gray-500">
-              One-click conversion from approved candidate to employee database
-              with full audit logging.
-            </p>
+        </div>
+      </section>
+
+      {/* Workflow Section - Restored */}
+      <section id="how-it-works" className="py-24 bg-gray-50 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold tracking-tight mb-4">
+              Seamless Workflow
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            {[
+              {
+                title: "Connect",
+                desc: "Set up project & career page",
+                icon: Link,
+              },
+              { title: "Analyze", desc: "AI screens & scores CVs", icon: Bot },
+              {
+                title: "Review",
+                desc: "Human confirmation & interview",
+                icon: CheckCircle,
+              },
+              {
+                title: "Onboard",
+                desc: "Convert to employee record",
+                icon: Users,
+              },
+            ].map((item, i) => (
+              <div key={i} className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-white border border-gray-200 rounded-full flex items-center justify-center mb-4 shadow-sm font-bold text-gray-400">
+                  {i + 1}
+                </div>
+                <h4 className="font-bold text-lg mb-2">{item.title}</h4>
+                <p className="text-sm text-gray-500">{item.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 bg-gray-50 border-t border-gray-100 text-center">
+      <footer className="py-12 px-6 bg-white border-t border-gray-100 text-center">
         <div className="font-bold text-lg mb-2">HARIS</div>
         <p className="text-sm text-gray-500">
           Autonomous Human Resource Information System
+        </p>
+        <p className="text-xs text-gray-400 mt-4">
+          Built for Re:AI Hackathon 2026
         </p>
       </footer>
     </div>
