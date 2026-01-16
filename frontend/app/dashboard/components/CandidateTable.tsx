@@ -13,7 +13,7 @@ interface Candidate {
   status: string;
   experience_years?: number;
   key_skills?: string;
-  cv_valid: boolean;
+  cv_valid?: boolean;
   created_at: string;
   updated_at?: string;
 }

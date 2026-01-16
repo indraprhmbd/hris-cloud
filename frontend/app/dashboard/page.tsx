@@ -15,6 +15,36 @@ import {
 import CandidateTable from "./components/CandidateTable";
 import ProjectTable from "./components/ProjectTable";
 
+interface Organization {
+  id: string;
+  name: string;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  is_active: boolean;
+  org_id: string;
+  template_id: string;
+  created_at: string;
+  applicant_count?: number;
+}
+
+interface Applicant {
+  id: string;
+  name: string;
+  email: string;
+  project_id: string;
+  project_name?: string;
+  ai_score: number;
+  status: string;
+  experience_years?: number;
+  key_skills?: string;
+  cv_valid?: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -36,10 +66,9 @@ function DashboardContent() {
   // --- SWR Hooks for Caching & Performance ---
 
   // 1. Organizations
-  const { data: orgs = [], mutate: mutateOrgs } = useSWR(
-    "organizations",
-    getOrganizations
-  );
+  const { data: orgs = [] as Organization[], mutate: mutateOrgs } = useSWR<
+    Organization[]
+  >("organizations", getOrganizations);
 
   // Sync selectedOrg with URL or first org
   useEffect(() => {
@@ -53,17 +82,18 @@ function DashboardContent() {
   }, [orgs, orgIdFromUrl, selectedOrg]);
 
   // 2. Projects (Bulk fetch for the selected org)
-  const { data: projects = [], mutate: mutateProjects } = useSWR(
-    selectedOrg ? `org/${selectedOrg}/projects` : null,
-    () => getProjects(selectedOrg!)
+  const { data: projects = [] as Project[], mutate: mutateProjects } = useSWR<
+    Project[]
+  >(selectedOrg ? `org/${selectedOrg}/projects` : null, () =>
+    getProjects(selectedOrg!)
   );
 
   // 3. Applicants (Bulk fetch for the entire org - Fixes N+1)
   const {
-    data: allCandidates = [],
+    data: allCandidates = [] as Applicant[],
     mutate: mutateCandidates,
     isLoading: isLoadingCandidates,
-  } = useSWR(
+  } = useSWR<Applicant[]>(
     selectedOrg ? `org/${selectedOrg}/applicants` : null,
     () => getOrgApplicants(selectedOrg!),
     { refreshInterval: 10000 } // Refresh every 10s to see AI processing status updates
@@ -133,7 +163,7 @@ function DashboardContent() {
                     onChange={(e) => setSelectedOrg(e.target.value)}
                     className="bg-transparent text-sm font-medium text-gray-700 hover:text-black focus:outline-none cursor-pointer border-b border-transparent hover:border-gray-300 transition-colors"
                   >
-                    {orgs.map((org) => (
+                    {orgs.map((org: Organization) => (
                       <option key={org.id} value={org.id}>
                         {org.name}
                       </option>
@@ -194,10 +224,10 @@ function DashboardContent() {
             />
           ) : (
             <ProjectTable
-              projects={projects.map((p: any) => ({
+              projects={projects.map((p: Project) => ({
                 ...p,
                 applicant_count: allCandidates.filter(
-                  (c: any) => c.project_id === p.id
+                  (c: Applicant) => c.project_id === p.id
                 ).length,
               }))}
               onToggleStatus={handleToggleProjectStatus}
