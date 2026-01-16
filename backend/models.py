@@ -58,6 +58,7 @@ class Applicant(BaseModel):
     experience_years: Optional[int] = None
     key_skills: Optional[str] = None
     cv_valid: bool = True
+    project_name: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
