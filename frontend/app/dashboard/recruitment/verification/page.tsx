@@ -77,7 +77,19 @@ export default function VerificationPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.detail || "Failed to verify candidate");
+        console.error("API Error Response:", error);
+
+        // Handle FastAPI validation errors (422)
+        if (error.detail && Array.isArray(error.detail)) {
+          const errorMessages = error.detail
+            .map((err: any) => `${err.loc.join(".")}: ${err.msg}`)
+            .join(", ");
+          throw new Error(errorMessages);
+        }
+
+        throw new Error(
+          error.detail || JSON.stringify(error) || "Failed to verify candidate"
+        );
       }
 
       const result = await res.json();
