@@ -10,10 +10,9 @@ import magic  # python-magic for file type detection
 
 # Configuration
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
-ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf"}
 ALLOWED_MIME_TYPES = {
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    "application/pdf"
 }
 
 
@@ -92,10 +91,32 @@ def validate_mime_type(content: bytes) -> str:
     if mime not in ALLOWED_MIME_TYPES:
         raise ValidationError(
             f"Invalid file format. File appears to be '{mime}'. "
-            f"Only PDF and DOCX documents are accepted."
+            f"Only PDF documents are accepted."
         )
     
     return mime
+
+
+def is_professional_cv(text: str) -> bool:
+    """
+    Rule-based filtering to decide if a text looks like a professional CV.
+    Cost-saving measure before triggering AI.
+    """
+    if not text:
+        return False
+        
+    # Keywords indicating a professional profile
+    professional_keywords = [
+        "experience", "education", "skills", "projects", "work", 
+        "employment", "summary", "contact", "email", "phone",
+        "developer", "engineer", "specialist", "manager", "lead"
+    ]
+    
+    text_lower = text.lower()
+    match_count = sum(1 for word in professional_keywords if word in text_lower)
+    
+    # Requirement: At least 3 professional keywords must be present
+    return match_count >= 3
 
 
 def validate_cv_file(file: UploadFile, content: bytes) -> Tuple[str, None]:
@@ -130,6 +151,6 @@ def validate_cv_file(file: UploadFile, content: bytes) -> Tuple[str, None]:
             detail={
                 "error": "Invalid CV file",
                 "message": str(e),
-                "hint": "Please upload a valid PDF or DOCX resume (max 5MB)"
+                "hint": "Please upload a valid PDF resume (max 5MB)"
             }
         )

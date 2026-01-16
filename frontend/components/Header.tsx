@@ -161,9 +161,16 @@ export default function Header() {
         <button className="text-gray-500 hover:text-black transition-colors cursor-not-allowed opacity-50">
           Candidates
         </button>
-        <button className="text-gray-500 hover:text-black transition-colors cursor-not-allowed opacity-50">
-          AI Activity
-        </button>
+        <Link
+          href="/dashboard/policy-chat"
+          className={`transition-colors hover:text-black ${
+            isActive("/dashboard/policy-chat")
+              ? "text-black font-medium"
+              : "text-gray-500"
+          }`}
+        >
+          Policy Chat
+        </Link>
         <button className="text-gray-500 hover:text-black transition-colors cursor-not-allowed opacity-50">
           Settings
         </button>

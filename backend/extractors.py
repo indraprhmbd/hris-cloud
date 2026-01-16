@@ -8,7 +8,6 @@ import io
 import re
 from typing import Tuple
 from pypdf import PdfReader
-from docx import Document
 from fastapi import HTTPException
 
 
@@ -55,40 +54,6 @@ def extract_text_from_pdf(content: bytes) -> str:
         raise
     except Exception as e:
         raise ExtractionError(f"Failed to extract text from PDF: {str(e)}")
-
-
-def extract_text_from_docx(content: bytes) -> str:
-    """
-    Extract text from DOCX file.
-    
-    Args:
-        content: DOCX file content as bytes
-        
-    Returns:
-        Extracted text
-        
-    Raises:
-        ExtractionError: If extraction fails
-    """
-    try:
-        doc = Document(io.BytesIO(content))
-        text_parts = []
-        
-        for paragraph in doc.paragraphs:
-            if paragraph.text.strip():
-                text_parts.append(paragraph.text)
-        
-        # Also extract text from tables
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    if cell.text.strip():
-                        text_parts.append(cell.text)
-        
-        return "\n".join(text_parts)
-        
-    except Exception as e:
-        raise ExtractionError(f"Failed to extract text from DOCX: {str(e)}")
 
 
 def validate_text_quality(text: str) -> Tuple[bool, str]:
@@ -145,13 +110,11 @@ def extract_and_validate_cv_text(content: bytes, mime_type: str) -> str:
         HTTPException: If extraction or validation fails
     """
     try:
-        # Extract text based on file type
+        # Extract text from PDF
         if mime_type == "application/pdf":
             text = extract_text_from_pdf(content)
-        elif mime_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            text = extract_text_from_docx(content)
         else:
-            raise ExtractionError(f"Unsupported MIME type: {mime_type}")
+            raise ExtractionError(f"Unsupported MIME type: {mime_type}. PDF only allowed.")
         
         # Validate text quality
         is_valid, error_message = validate_text_quality(text)

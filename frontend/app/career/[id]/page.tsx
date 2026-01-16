@@ -265,7 +265,7 @@ export default function CareerPage() {
                       <input
                         required
                         type="file"
-                        accept=".pdf,.txt,.md"
+                        accept=".pdf"
                         className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer text-gray-500"
                         onChange={(e) =>
                           e.target.files && setCvFile(e.target.files[0])
