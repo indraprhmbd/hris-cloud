@@ -151,7 +151,10 @@ export default function ProjectsPage() {
           return (
             <div
               key={project.id}
-              className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+              onClick={() =>
+                router.push(`/dashboard/recruitment/projects/${project.id}`)
+              }
+              className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
             >
               <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
@@ -161,7 +164,8 @@ export default function ProjectsPage() {
                         {project.name}
                       </h3>
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setEditingProject(project);
                           setEditName(project.name);
                         }}
@@ -234,13 +238,17 @@ export default function ProjectsPage() {
                     href={`${window.location.origin}/career/${project.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
                     className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 text-gray-700 rounded text-xs font-medium hover:bg-gray-100 transition-colors border border-gray-200"
                   >
                     <ExternalLink className="w-3 h-3" />
                     Career Page
                   </a>
                   <button
-                    onClick={() => handleDelete(project.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(project.id);
+                    }}
                     className="px-3 py-2 border border-gray-200 text-gray-500 rounded text-xs font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors"
                   >
                     <Trash2 className="w-3 h-3" />
