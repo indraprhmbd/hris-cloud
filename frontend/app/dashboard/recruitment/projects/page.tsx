@@ -8,6 +8,7 @@ import {
   getOrgApplicants,
   deleteProject,
   updateProject,
+  createProject,
 } from "@/lib/api";
 import { Trash2, Plus, ExternalLink, Edit2, X } from "lucide-react";
 
@@ -48,19 +49,7 @@ export default function ProjectsPage() {
     }
 
     try {
-      const API_URL =
-        process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      const res = await fetch(`${API_URL}/projects`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newProjectName,
-          template_id: "template-modern",
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to create project");
-
+      await createProject(newProjectName, "template-modern");
       setNewProjectName("");
       setIsModalOpen(false);
       mutateProjects();
