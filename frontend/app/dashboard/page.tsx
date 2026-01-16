@@ -40,8 +40,6 @@ interface Applicant {
   project_name?: string;
   ai_score: number;
   status: string;
-  experience_years?: number;
-  key_skills?: string;
   cv_valid?: boolean;
   created_at: string;
   updated_at?: string;

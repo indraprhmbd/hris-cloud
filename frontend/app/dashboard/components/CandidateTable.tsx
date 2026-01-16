@@ -11,8 +11,6 @@ interface Candidate {
   project_name?: string;
   ai_score: number;
   status: string;
-  experience_years?: number;
-  key_skills?: string;
   cv_valid?: boolean;
   created_at: string;
   updated_at?: string;
@@ -133,12 +131,6 @@ export default function CandidateTable({
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
-                  Experience
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">
-                  Key Skills
-                </th>
                 <th
                   onClick={() => handleSort("created_at")}
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors hidden sm:table-cell"
@@ -195,14 +187,6 @@ export default function CandidateTable({
                     >
                       {candidate.status}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 hidden lg:table-cell">
-                    {candidate.experience_years
-                      ? `${candidate.experience_years} yrs`
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 hidden xl:table-cell max-w-xs truncate">
-                    {candidate.key_skills || "—"}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
                     {new Date(candidate.created_at).toLocaleDateString()}

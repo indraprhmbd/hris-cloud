@@ -188,10 +188,22 @@ def list_org_applicants(org_id: str, user_id: str = Depends(get_current_user)):
     
     # Flatten the project name into the applicant object
     flattened = []
-    for item in res.data:
-        project_name = item.get("projects", {}).get("name", "Unknown")
-        item["project_name"] = project_name
-        flattened.append(item)
+    if res.data:
+        for item in res.data:
+            # item["projects"] is the joined object
+            project_data = item.get("projects")
+            if isinstance(project_data, dict):
+                item["project_name"] = project_data.get("name", "Unknown")
+            elif isinstance(project_data, list) and len(project_data) > 0:
+                # Handle cases where Supabase returns list for 1:1 join if not configured as inner join
+                item["project_name"] = project_data[0].get("name", "Unknown")
+            else:
+                item["project_name"] = "Unknown"
+            
+            # Remove the raw join object to clean up the response
+            if "projects" in item:
+                del item["projects"]
+            flattened.append(item)
         
     return flattened
 
