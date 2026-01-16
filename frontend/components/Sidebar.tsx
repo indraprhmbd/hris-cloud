@@ -114,6 +114,16 @@ export default function Sidebar() {
           {isRecruitmentOpen && (
             <div className="ml-7 mt-1 space-y-1 border-l-2 border-gray-100 pl-3">
               <Link
+                href="/dashboard/recruitment/projects"
+                className={`block px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  pathname === "/dashboard/recruitment/projects"
+                    ? "bg-gray-100 text-black"
+                    : "text-gray-500 hover:bg-gray-50 hover:text-black"
+                }`}
+              >
+                Projects
+              </Link>
+              <Link
                 href="/dashboard/recruitment/inbox"
                 className={`block px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                   pathname === "/dashboard/recruitment/inbox"
