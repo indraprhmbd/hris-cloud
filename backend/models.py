@@ -89,3 +89,9 @@ class Employee(EmployeeBase):
 
 class ApplicantUpdate(BaseModel):
     status: str
+
+class VerifyApplicantRequest(BaseModel):
+    department: str
+    role: str
+    join_date: str
+    leave_remaining: int = 12

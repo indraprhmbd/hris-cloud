@@ -341,10 +341,7 @@ def convert_to_employee(applicant_id: str, user_id: str = Depends(get_current_us
 @router.post("/applicants/{applicant_id}/verify")
 def verify_and_convert_applicant(
     applicant_id: str,
-    department: str,
-    role: str,
-    join_date: str,
-    leave_remaining: int = 12,
+    request: models.VerifyApplicantRequest,
     user_id: str = Depends(get_current_user)
 ):
     """
@@ -371,11 +368,11 @@ def verify_and_convert_applicant(
     new_employee = {
         "name": applicant["name"],
         "email": applicant["email"],
-        "role": role,
-        "department": department,
-        "leave_remaining": leave_remaining,
+        "role": request.role,
+        "department": request.department,
+        "leave_remaining": request.leave_remaining,
         "status": "active",
-        "join_date": join_date
+        "join_date": request.join_date
     }
     
     res = supabase.table("employees").insert(new_employee).execute()
