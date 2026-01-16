@@ -5,12 +5,16 @@ from services.policy_service import answer_policy_question
 router = APIRouter()
 
 @router.get("/chat")
-def chat_with_policy(query: str, user_id: str = Depends(get_current_user)):
+def chat_with_policy(query: str, user_id: str = Depends(get_current_user), employee_id: str = None):
     """
-    Employee Chat endpoint.
-    Retrieves answers from company policy PDFs.
+    Employee Chat.
+    Accepts optional 'employee_id' to simulate logged-in user context (Hackathon Demo Mode).
     """
-    if not query:
-        raise HTTPException(status_code=400, detail="Query is required")
-        
-    return answer_policy_question(user_id, query)
+    emp_context = None
+    if employee_id:
+        from database import supabase, EPOCH_SENTINEL
+        res = supabase.table("employees").select("*").eq("id", employee_id).eq("deleted_at", EPOCH_SENTINEL).execute()
+        if res.data:
+            emp_context = res.data[0]
+
+    return answer_policy_question(user_id, query, employee_context=emp_context)

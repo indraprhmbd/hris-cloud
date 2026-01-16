@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 
 from rate_limiter import rate_limit_middleware
-from routers import recruitment, policy
+from routers import recruitment, policy, employees, admin_policy
 
 load_dotenv()
 
@@ -44,4 +44,6 @@ def read_root():
 
 # Include Routers
 app.include_router(recruitment.router, tags=["Recruitment"])
-app.include_router(policy.router, prefix="/policy", tags=["Employee Policy"])
+app.include_router(employees.router, prefix="/employees", tags=["Employee Data"])
+app.include_router(admin_policy.router, prefix="/admin/policy", tags=["HR Policy Mgmt"])
+app.include_router(policy.router, prefix="/policy", tags=["Employee Policy Q&A"])

@@ -12,7 +12,7 @@ class Organization(BaseModel):
     created_at: datetime
 
 class ProjectCreate(BaseModel):
-    org_id: UUID
+    org_id: Optional[UUID] = None
     name: str
     template_id: str
 
@@ -61,6 +61,31 @@ class Applicant(BaseModel):
     project_name: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+class EmployeeBase(BaseModel):
+    name: str
+    email: EmailStr
+    role: str
+    department: Optional[str] = None
+    join_date: Optional[datetime] = None
+    leave_remaining: int = 12
+    status: str = "active"
+
+class EmployeeCreate(EmployeeBase):
+    pass
+
+class EmployeeUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[str] = None
+    department: Optional[str] = None
+    leave_remaining: Optional[int] = None
+    status: Optional[str] = None
+
+class Employee(EmployeeBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
 
 class ApplicantUpdate(BaseModel):
     status: str

@@ -37,15 +37,30 @@ def list_organizations(user_id: str = Depends(get_current_user)):
     return res.data
 
 # --- Projects ---
+def get_or_create_org(user_id: str) -> str:
+    """Helper to ensure 1 HR = 1 Org."""
+    res = supabase.table("organizations").select("id").eq("owner_id", user_id).eq("deleted_at", EPOCH_SENTINEL).execute()
+    if res.data:
+        return res.data[0]["id"]
+    
+    # Auto-create if not exists
+    new_org = supabase.table("organizations").insert({
+        "name": "My Organization",
+        "owner_id": user_id
+    }).execute()
+    
+    if not new_org.data:
+        raise HTTPException(status_code=500, detail="Failed to initialize organization")
+    return new_org.data[0]["id"]
+
+# --- Projects ---
 @router.post("/projects", response_model=Project)
 def create_project(project: ProjectCreate, user_id: str = Depends(get_current_user)):
-    # Verify org ownership
-    org_check = supabase.table("organizations").select("id").eq("id", str(project.org_id)).eq("owner_id", user_id).execute()
-    if not org_check.data:
-        raise HTTPException(status_code=403, detail="Not authorized for this Organization")
+    # Auto-resolve Org
+    org_id = get_or_create_org(user_id)
 
     res = supabase.table("projects").insert({
-        "org_id": str(project.org_id),
+        "org_id": org_id,
         "name": project.name,
         "template_id": project.template_id,
         "owner_id": user_id
@@ -55,7 +70,10 @@ def create_project(project: ProjectCreate, user_id: str = Depends(get_current_us
     return res.data[0]
 
 @router.get("/projects", response_model=List[Project])
-def list_projects(org_id: str, user_id: str = Depends(get_current_user)):
+def list_projects(user_id: str = Depends(get_current_user)):
+    # Auto-resolve Org (Implicit ownership check via org_id)
+    org_id = get_or_create_org(user_id)
+    
     res = supabase.table("projects")\
         .select("*")\
         .eq("org_id", org_id)\
@@ -128,8 +146,11 @@ def generate_api_key(project_id: str, user_id: str = Depends(get_current_user)):
     return res.data[0]
 
 # --- Applicants (Recruitment Logic) ---
-@router.get("/organizations/{org_id}/applicants", response_model=List[Applicant])
-def list_org_applicants(org_id: str, user_id: str = Depends(get_current_user)):
+@router.get("/applicants/all", response_model=List[Applicant])
+def list_all_applicants(user_id: str = Depends(get_current_user)):
+    """List all applicants across all projects for the user's organization."""
+    org_id = get_or_create_org(user_id)
+    
     org_check = supabase.table("organizations")\
         .select("id")\
         .eq("id", org_id)\
@@ -137,7 +158,8 @@ def list_org_applicants(org_id: str, user_id: str = Depends(get_current_user)):
         .eq("deleted_at", EPOCH_SENTINEL)\
         .execute()
     if not org_check.data:
-        raise HTTPException(status_code=403, detail="Not authorized")
+         # Should catch inconsistent state if get_or_create failed logic
+         raise HTTPException(status_code=403, detail="Not authorized")
     
     proj_res = supabase.table("projects")\
         .select("id")\
@@ -272,3 +294,46 @@ async def apply_candidate(
     applicant = res.data[0]
     background_tasks.add_task(process_ai_score, applicant["id"], name, email, cv_text)
     return applicant
+
+@router.post("/applicants/{applicant_id}/convert", response_model=dict)
+def convert_to_employee(applicant_id: str, user_id: str = Depends(get_current_user)):
+    """
+    Manually convert an approved applicant to an active employee.
+    HARIS Philosophy: Human-in-the-loop Final Action.
+    """
+    # 1. Fetch Applicant
+    app_res = supabase.table("applicants").select("*").eq("id", applicant_id).execute()
+    if not app_res.data:
+        raise HTTPException(status_code=404, detail="Applicant not found")
+    
+    applicant = app_res.data[0]
+    
+    # 2. Verify Status
+    if applicant["status"] != "approved":
+        raise HTTPException(status_code=400, detail="Only approved applicants can be converted to employees")
+        
+    # 3. Check if already exists in employees (by email)
+    emp_check = supabase.table("employees").select("id").eq("email", applicant["email"]).execute()
+    if emp_check.data:
+        raise HTTPException(status_code=400, detail="Employee with this email already exists")
+
+    # 4. Create Employee Record
+    new_employee = {
+        "name": applicant["name"],
+        "email": applicant["email"],
+        "role": "New Hire (Junior)", # Default role, can be updated later
+        "department": "Unassigned",
+        "leave_remaining": 12, # Policy Default
+        "status": "active",
+        "join_date": datetime.datetime.now().date().isoformat()
+    }
+    
+    res = supabase.table("employees").insert(new_employee).execute()
+    
+    if not res.data:
+         raise HTTPException(status_code=500, detail="Failed to create employee record")
+         
+    # 5. Update Applicant Status to 'hired' to prevent double conversion
+    supabase.table("applicants").update({"status": "hired"}).eq("id", applicant_id).execute()
+    
+    return {"status": "success", "message": "Candidate successfully hired", "employee_id": res.data[0]["id"]}

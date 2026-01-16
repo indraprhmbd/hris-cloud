@@ -31,27 +31,43 @@ def extract_text_from_policies() -> str:
                 print(f"Error reading {filename}: {e}")
     return combined_text
 
-def answer_policy_question(user_id: str, query: str) -> Dict:
+def answer_policy_question(user_id: str, query: str, employee_context: Dict = None) -> Dict:
     """
-    RAG-style question answering.
-    1. Extracts context from local PDFs.
-    2. Uses LLM to answer based ONLY on that context.
-    3. Logs the interaction for HR.
+    RAG-style question answering with Employee Context injection.
+    HARIS Philosophy: AI is a checker/drafter, NOT an executor.
     """
-    context = extract_text_from_policies()
+    policy_text = extract_text_from_policies()
     
-    if not context:
+    if not policy_text:
         return {
-            "answer": "Maaf, saat ini dokumen kebijakan belum tersedia di sistem. Silakan hubungi HR.",
-            "reasoning": "No policy documents found in the backend 'policies/' folder."
+            "answer": "Maaf, belum ada dokumen kebijakan yang diunggah oleh HR.",
+            "reasoning": "No policy documents found in the backend."
         }
     
+    # Context Injection
+    emp_info = "Status: Unknown Employee"
+    if employee_context:
+        emp_info = (
+            f"Employee Name: {employee_context.get('name')}\n"
+            f"Role: {employee_context.get('role')}\n"
+            f"Leave Remaining: {employee_context.get('leave_remaining')} days\n"
+            f"Join Date: {employee_context.get('join_date')}"
+        )
+
+    system_prompt = (
+        "You are HARIS, an AI Policy Assistant. "
+        "Your role is to READ policy documents and employee data to answer questions. "
+        "YOU MUST NOT EXECUTE ANY ACTIONS. YOU CANNOT APPROVE, REJECT, OR SUBMIT REQUESTS. "
+        "If the user asks to take leave, check their 'Leave Remaining' vs the Policy rules, "
+        "then generated a DRAFT response or explain why they can/cannot. "
+        "ALWAYS cite the specific policy section in your reasoning.\n\n"
+        f"--- EMPLOYEE DATA (READ-ONLY) ---\n{emp_info}\n\n"
+        f"--- POLICY DOCUMENTS ---\n{policy_text}"
+    )
+    
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an HR Policy Assistant. Use the provided POLICY CONTEXT to answer the user question. "
-                   "If the answer is not in the context, say you don't know and advise contacting HR. "
-                   "Be professional and concise. Provide reasoning for your answer. "
-                   "Output MUST be strict JSON with keys: 'answer' and 'reasoning'."),
-        ("user", f"POLICY CONTEXT:\n{context}\n\nUSER QUESTION: {query}")
+        ("system", system_prompt),
+        ("user", f"USER QUESTION: {query}")
     ])
     
     try:
@@ -59,12 +75,21 @@ def answer_policy_question(user_id: str, query: str) -> Dict:
         chain = prompt | llm
         response = chain.invoke({})
         
-        # Simple parsing if it's not JSON (Llama 3 is usually good at JSON if told)
-        # For simplicity in MVP, we can use JsonOutputParser but let's keep it robust
+        # Consistent JSON parsing
         import json
         try:
-            res_json = json.loads(response.content)
+            res_content = response.content
+            # Try to find JSON block if mixed with text
+            if "```json" in res_content:
+                res_content = res_content.split("```json")[1].split("```")[0].strip()
+            elif "{" in res_content:
+                start = res_content.find("{")
+                end = res_content.rfind("}") + 1
+                res_content = res_content[start:end]
+                
+            res_json = json.loads(res_content)
         except:
+            # Fallback if LLM outputs plain text
             res_json = {"answer": response.content, "reasoning": "Direct LLM response"}
             
         # Log to Supabase
@@ -80,6 +105,6 @@ def answer_policy_question(user_id: str, query: str) -> Dict:
     except Exception as e:
         print(f"Policy AI Error: {e}")
         return {
-            "answer": "Sistem sedang mengalami gangguan saat memproses pertanyaan Anda.",
+            "answer": "Maaf, HARIS sedang mengalami gangguan.",
             "reasoning": str(e)
         }

@@ -39,25 +39,21 @@ export async function getOrganizations() {
   return res.json();
 }
 
-export async function createProject(
-  orgId: string,
-  name: string,
-  templateId: string
-) {
+export async function createProject(name: string, templateId: string) {
   const headers = await getHeaders();
   const res = await fetch(`${API_URL}/projects`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ org_id: orgId, name, template_id: templateId }),
+    body: JSON.stringify({ name, template_id: templateId }),
   });
   if (!res.ok) throw new Error("Failed to create project");
   return res.json();
 }
 
-export async function getProjects(orgId: string) {
+export async function getProjects() {
   const headers = await getHeaders();
   delete headers["Content-Type"];
-  const res = await fetch(`${API_URL}/projects?org_id=${orgId}`, { headers });
+  const res = await fetch(`${API_URL}/projects`, { headers });
   if (!res.ok) throw new Error("Failed to fetch projects");
   return res.json();
 }
@@ -125,10 +121,10 @@ export async function updateApplicantStatus(
   return res.json();
 }
 
-export async function getOrgApplicants(orgId: string) {
+export async function getOrgApplicants() {
   const headers = await getHeaders();
   delete headers["Content-Type"];
-  const res = await fetch(`${API_URL}/organizations/${orgId}/applicants`, {
+  const res = await fetch(`${API_URL}/applicants/all`, {
     headers,
   });
   if (!res.ok) throw new Error("Failed to fetch organization applicants");
@@ -152,5 +148,19 @@ export async function deleteApplicant(applicantId: string) {
     headers,
   });
   if (!res.ok) throw new Error("Failed to delete applicant");
+  return res.json();
+}
+
+export async function convertApplicantToEmployee(applicantId: string) {
+  const headers = await getHeaders();
+  const res = await fetch(`${API_URL}/applicants/${applicantId}/convert`, {
+    method: "POST",
+    headers,
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Failed to convert applicant");
+  }
   return res.json();
 }

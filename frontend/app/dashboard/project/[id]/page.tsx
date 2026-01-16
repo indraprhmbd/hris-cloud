@@ -7,6 +7,7 @@ import {
   getApplicants,
   updateApplicantStatus,
   updateProject,
+  convertApplicantToEmployee,
 } from "@/lib/api";
 
 export default function ProjectDashboard() {
@@ -234,10 +235,14 @@ export default function ProjectDashboard() {
                 <span>{new Date(app.created_at).toLocaleDateString()}</span>
                 <span
                   className={`capitalize ${
-                    app.status === "approved"
+                    app.status === "hired"
+                      ? "text-blue-600 font-bold"
+                      : app.status === "approved"
                       ? "text-green-600 font-medium"
                       : app.status === "rejected"
                       ? "text-red-600"
+                      : app.status === "interview"
+                      ? "text-purple-600 font-medium"
                       : ""
                   }`}
                 >
@@ -356,18 +361,65 @@ export default function ProjectDashboard() {
             <div className="mr-auto text-xs text-gray-400 font-mono hidden sm:block">
               ID: {selectedCandidate.id}
             </div>
-            <button
-              onClick={() => handleStatus(selectedCandidate.id, "rejected")}
-              className="px-4 py-2 border border-gray-200 text-gray-600 rounded text-sm font-medium hover:bg-gray-50 hover:text-red-600 transition-colors"
-            >
-              Reject
-            </button>
-            <button
-              onClick={() => handleStatus(selectedCandidate.id, "approved")}
-              className="px-4 py-2 bg-black text-white rounded text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
-            >
-              Approve Candidate
-            </button>
+
+            {selectedCandidate.status === "hired" ? (
+              <span className="px-4 py-2 bg-green-100 text-green-800 rounded text-sm font-bold">
+                ✓ Hired & Onboarded
+              </span>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleStatus(selectedCandidate.id, "rejected")}
+                  className="px-4 py-2 border border-gray-200 text-gray-600 rounded text-sm font-medium hover:bg-gray-50 hover:text-red-600 transition-colors"
+                >
+                  Reject
+                </button>
+
+                {/* Flow Control */}
+                {selectedCandidate.status === "processing" && (
+                  <button
+                    onClick={() =>
+                      handleStatus(selectedCandidate.id, "interview")
+                    }
+                    className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+                  >
+                    Move to Interview
+                  </button>
+                )}
+
+                {selectedCandidate.status === "interview" && (
+                  <button
+                    onClick={() =>
+                      handleStatus(selectedCandidate.id, "approved")
+                    }
+                    className="px-4 py-2 bg-black text-white rounded text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
+                  >
+                    Approve for Hire
+                  </button>
+                )}
+
+                {selectedCandidate.status === "approved" && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        if (
+                          !confirm("Create employee record for this candidate?")
+                        )
+                          return;
+                        await convertApplicantToEmployee(selectedCandidate.id);
+                        alert("Employee record created successfully!");
+                        loadData();
+                      } catch (e: any) {
+                        alert(e.message);
+                      }
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 transition-colors shadow-sm flex items-center gap-2"
+                  >
+                    <span>+</span> Add to Employee Database
+                  </button>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
