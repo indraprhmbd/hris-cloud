@@ -360,23 +360,39 @@ def verify_and_convert_applicant(
     if applicant["status"] != "interview_approved":
         raise HTTPException(status_code=400, detail="Only interview-approved applicants can be verified")
         
-    # 3. Check if already exists in employees (by email, excluding deleted)
-    emp_check = supabase.table("employees").select("id").eq("email", applicant["email"]).eq("deleted_at", EPOCH_SENTINEL).execute()
-    if emp_check.data:
-        raise HTTPException(status_code=400, detail="Employee with this email already exists")
-
-    # 4. Create Employee Record with HR-provided data
-    new_employee = {
-        "name": applicant["name"],
-        "email": applicant["email"],
-        "role": request.role,
-        "department": request.department,
-        "leave_remaining": request.leave_remaining,
-        "status": "active",
-        "join_date": request.join_date
-    }
+    # 3. Check for existing employee with this email (including deleted)
+    existing_emp_res = supabase.table("employees").select("*").eq("email", applicant["email"]).execute()
     
-    res = supabase.table("employees").insert(new_employee).execute()
+    existing_emp = existing_emp_res.data[0] if existing_emp_res.data else None
+    
+    if existing_emp:
+        # If active, prevent duplicate
+        if existing_emp["deleted_at"] == EPOCH_SENTINEL:
+             raise HTTPException(status_code=400, detail="Employee with this email already exists")
+        
+        # If soft-deleted, RESTORE it (Update)
+        res = supabase.table("employees").update({
+            "name": applicant["name"],
+            "role": request.role,
+            "department": request.department,
+            "leave_remaining": request.leave_remaining,
+            "status": "active",
+            "join_date": request.join_date,
+            "deleted_at": EPOCH_SENTINEL  # Restore!
+        }).eq("id", existing_emp["id"]).execute()
+        
+    else:
+        # 4. Create NEW Employee Record
+        new_employee = {
+            "name": applicant["name"],
+            "email": applicant["email"],
+            "role": request.role,
+            "department": request.department,
+            "leave_remaining": request.leave_remaining,
+            "status": "active",
+            "join_date": request.join_date
+        }
+        res = supabase.table("employees").insert(new_employee).execute()
     
     if not res.data:
          raise HTTPException(status_code=500, detail="Failed to create employee record")
